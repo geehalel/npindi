@@ -17,7 +17,8 @@
 
 #import collections
 import logging
-import queue
+#import queue
+import asyncio
 import time
 
 from indi.indibase.basemediator import BaseMediator
@@ -29,16 +30,22 @@ class IndiEventQueueMediator(BaseMediator):
             self.logger=logging.getLogger('eventqueuemediator')
         else:
             self.logger=logger        
-        self.queue = queue.Queue()
+        #self.queue = queue.Queue()
         #self.queue=collections.deque()
+        self.queue=asyncio.Queue()
         self.indieventfilter=None
     def queue_append(self, event):
         #self.queue.append(event)
-        self.queue.put(event)
+        #self.queue.put(event)
+        self.queue.put_nowait(event)
+        self.queue._loop._write_to_self()
     def queue_pop(self, timeout=None):
         #return self.queue.popleft()
         try:
-            event=self.queue.get(timeout=timeout)
+            #event=self.queue.get(timeout=timeout)
+            event = asyncio.wait_for(self.queue.get(), timeout=timeout).result()
+        except asyncio.TimeoutError:
+            event=None
         except queue.Empty:
             event=None
         if event: self.queue.task_done()
@@ -47,8 +54,16 @@ class IndiEventQueueMediator(BaseMediator):
         remains=timeout
         start=time.monotonic()
         while True:
-            event=self.queue_pop(timeout=remains)
+            #event=self.queue_pop(timeout=remains)
+            try:
+                future = asyncio.run_coroutine_threadsafe(self.queue.get(), self.queue._loop)
+                event=future.result(timeout=remains)
+                #event = yield from asyncio.wait_for(self.queue.get(), timeout=remains).result()
+            except asyncio.TimeoutError:
+                event=None
+                future.cancel
             if not event: return None
+            if event: self.queue.task_done()
             if indi_event.includes(event):
                 break
             if timeout:
