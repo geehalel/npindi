@@ -37,33 +37,26 @@ class IndiEventQueueMediator(BaseMediator):
     def queue_append(self, event):
         #self.queue.append(event)
         #self.queue.put(event)
-        self.queue.put_nowait(event)
-        self.queue._loop._write_to_self()
+        asyncio.run_coroutine_threadsafe(self.queue.put(event), self.queue._loop)
     def queue_pop(self, timeout=None):
         #return self.queue.popleft()
         try:
             #event=self.queue.get(timeout=timeout)
-            event = asyncio.wait_for(self.queue.get(), timeout=timeout).result()
+            future = asyncio.wait_for(self.queue.get(), timeout=timeout)
+            future = asyncio.ensure_future(future)
+            asyncio.get_event_loop().run_until_complete(future)
+            event = future.result() 
         except asyncio.TimeoutError:
             event=None
-        except queue.Empty:
-            event=None
+            future.cancel()
         if event: self.queue.task_done()
         return event
     def queue_wait_event(self, indi_event, timeout=None):
         remains=timeout
         start=time.monotonic()
         while True:
-            #event=self.queue_pop(timeout=remains)
-            try:
-                future = asyncio.run_coroutine_threadsafe(self.queue.get(), self.queue._loop)
-                event=future.result(timeout=remains)
-                #event = yield from asyncio.wait_for(self.queue.get(), timeout=remains).result()
-            except asyncio.TimeoutError:
-                event=None
-                future.cancel
+            event=self.queue_pop(timeout=remains)
             if not event: return None
-            if event: self.queue.task_done()
             if indi_event.includes(event):
                 break
             if timeout:

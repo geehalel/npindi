@@ -92,7 +92,7 @@ class BaseClient:
                 return INDI.INDI_ERROR_TYPE.INDI_PROPERTY_INVALID
             prop=device.properties[prop_name]
             self.mediator.remove_property(prop)
-            self.logger.info('Deleting property '+prop.name+' in device '+device.name)
+            #self.logger.info('Deleting property '+prop.name+' in device '+device.name)
             del(device.properties[prop_name])
             return True
         else:
