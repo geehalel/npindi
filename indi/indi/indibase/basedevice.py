@@ -83,6 +83,11 @@ class BaseDevice:
             if not perm:
                 if self.logger: self.logger.error('Error extracting '+ prop_name + ' permission: ' + elem.get('perm'))
                 return INDI.INDI_ERROR_TYPE.INDI_PROPERTY_INVALID
+        rule=None
+        if prop_type==INDI.INDI_PROPERTY_TYPE.INDI_SWITCH:
+            rule=INDI.crackIndi(elem.get('rule'), INDI.ISRule)
+            if not rule:
+                rule = INDI.ISRule.ISR_10FMANY
         try:
             timeout=int(elem.get('timeout'))
         except:
@@ -95,6 +100,8 @@ class BaseDevice:
         new_prop=IVectorProperty(self, prop_name, label, group, timeout, state, prop_type, timestamp)
         if perm:
             new_prop.perm=perm
+        if rule:
+            new_prop.rule=rule
         for pelem in elem.iter(BaseDevice._elem_def_tags[prop_type]):
             pelem_name, pelem_label=pelem.get('name'), pelem.get('label')
             if pelem_name:
