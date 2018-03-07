@@ -17,40 +17,20 @@
 
 #import collections
 import logging
-#import queue
+import queue
 import asyncio
 import time
 
 from indi.indibase.basemediator import BaseMediator
 from indi.client.indievent import IndiEventType, IndiEvent
 
-class IndiEventQueueMediator(BaseMediator):
+class IndiEventMediator(BaseMediator):
     def __init__(self, logger=None):
         if not logger:
-            self.logger=logging.getLogger('eventqueuemediator')
+            self.logger=logging.getLogger('eventmediator')
         else:
             self.logger=logger        
-        #self.queue = queue.Queue()
-        #self.queue=collections.deque()
-        self.queue=asyncio.Queue()
-        self.indieventfilter=None
-    def queue_append(self, event):
-        #self.queue.append(event)
-        #self.queue.put(event)
-        asyncio.run_coroutine_threadsafe(self.queue.put(event), self.queue._loop)
-    def queue_pop(self, timeout=None):
-        #return self.queue.popleft()
-        try:
-            #event=self.queue.get(timeout=timeout)
-            future = asyncio.wait_for(self.queue.get(), timeout=timeout)
-            future = asyncio.ensure_future(future)
-            asyncio.get_event_loop().run_until_complete(future)
-            event = future.result() 
-        except asyncio.TimeoutError:
-            event=None
-            future.cancel()
-        if event: self.queue.task_done()
-        return event
+        self.queue=None
     def queue_wait_event(self, indi_event, timeout=None):
         remains=timeout
         start=time.monotonic()
@@ -127,4 +107,58 @@ class IndiEventQueueMediator(BaseMediator):
         indi_event = IndiEvent(IndiEventType.SERVER_DISCONNECTED)
         self.queue_append(indi_event)
         self.logger.debug('Mediator: queuing ' + str(indi_event)) 
- 
+
+class IndiEventQueueMediator(IndiEventMediator):
+    def __init__(self, logger=None):
+        super().__init__(logger=logger)
+        self.queue = queue.Queue()
+    def queue_append(self, event):
+        self.queue.put(event)
+    def queue_pop(self, timeout=None):
+        try:
+            event=self.queue.get(timeout=timeout)
+        except queue.Empty:
+            event=None
+        if event: self.queue.task_done()
+        return event
+
+class IndiEventAsyncioMediator(IndiEventMediator):
+    def __init__(self, logger=None):
+        super().__init__(logger=logger)
+        self.queue=asyncio.Queue()
+    def queue_append(self, event):
+        asyncio.run_coroutine_threadsafe(self.queue.put(event), self.queue._loop)
+    def queue_pop(self, timeout=None):
+        try:
+            future = asyncio.wait_for(self.queue.get(), timeout=timeout)
+            future = asyncio.ensure_future(future)
+            asyncio.get_event_loop().run_until_complete(future)
+            event = future.result() 
+        except asyncio.TimeoutError:
+            event=None
+            future.cancel()
+        if event: self.queue.task_done()
+        return event
+
+class IndiEventDequeMediator(IndiEventMediator):
+    def __init__(self, logger=None):
+        super().__init__(logger=logger)
+        self.queue=collections.deque()
+    def queue_append(self, event):
+        self.queue.append(event)
+    def queue_pop(self, timeout=None):
+        remains=timeout
+        start=time.monotonic()
+        while True:
+            try:
+                event=self.queue.popleft()
+            except IndexError:
+                event=None          
+            if event:
+                break
+            if timeout:
+                remains-=(time.monotonic() - start)
+                if remains <= 0.0:
+                    break
+                time.sleep(0.001)
+        return event

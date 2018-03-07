@@ -21,10 +21,12 @@ from indi.client.indieventqueuemediator import IndiEventQueueMediator
 from indi.client.indievent import IndiEventType, IndiEvent
 
 class IndiClient(BaseClient):
-    def __init__(self, host='localhost', port=7624, logger=None):
+    def __init__(self, host='localhost', port=7624, logger=None, mediator=None):
         super(IndiClient, self).__init__(host=host, port=port, mediator=None, logger=logger)
-        self.mediator=IndiEventQueueMediator(logger=self.logger)
-        self.time_step=0.01
+        if mediator is None:
+            self.mediator=IndiEventQueueMediator(logger=self.logger)
+        else:
+            self.mediator=mediator
     def wait_indi_event(self, indi_event, timeout=2):
         event=self.mediator.queue_wait_event(indi_event, timeout)
         if not event:
