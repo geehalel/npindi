@@ -196,6 +196,7 @@ class BaseDevice:
                         except:
                             if self.logger: self.logger.warn('Unable to base64 decode '+elem_name+' in '+prop_name)
                             continue
+                        elem.bloblen=len(data)
                         if elem.format[-2:]=='.z':
                             elem.blob=zlib.decompress(data)
                             elem.size=len(elem.blob)

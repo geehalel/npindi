@@ -15,7 +15,7 @@
 #    You should have received a copy of the GNU General Public License
 #    along with npindi.  If not, see <http://www.gnu.org/licenses/>.
 
-#import collections
+import collections
 import logging
 import queue
 import asyncio
@@ -27,7 +27,7 @@ from indi.client.indievent import IndiEventType, IndiEvent
 class IndiEventMediator(BaseMediator):
     def __init__(self, logger=None):
         if not logger:
-            self.logger=logging.getLogger('eventmediator')
+            self.logger=logging.getLogger(self.__class__.__name__)
         else:
             self.logger=logger        
         self.queue=None

@@ -15,6 +15,8 @@
 #    You should have received a copy of the GNU General Public License
 #    along with npindi.  If not, see <http://www.gnu.org/licenses/>.
 
+import logging
+
 class BaseMediator:
     def __init__(self, logger=None):
         if not logger:
