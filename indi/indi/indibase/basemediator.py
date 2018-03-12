@@ -44,6 +44,8 @@ class BaseMediator:
         self.logger.warn('BaseMediator: new_light: ' + light.name)
     def new_message(self, device, message_id):
         self.logger.warn('BaseMediator: new_message(id=' + str(message_id)+'): ' + device.message_queue(message_id))
+    def new_universal_message(self, message):
+        self.logger.warn('BaseMediator: new_universal_message: ' + message)
     def server_connected(self):
         self.logger.warn('BaseMediator: server_connected')
     def server_disconnected(self, exit_code):

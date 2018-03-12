@@ -57,6 +57,27 @@ class BaseClient:
             self.mediator=BaseMediator(self.logger)
         else:
             self.mediator=mediator
+    def clear(self):
+        for d in self.devices:
+            del(self.devices[d])
+        self.devices = dict()
+        for d in self.blob_modes:
+            del(self.blob_modes[d])
+        self.blob_modes = dict()
+    def setServer(self, hostname, port):
+        self.host = hostname
+        self.port = port
+    def connectServer(self):
+        return self.connect()
+    def disconnectServer(self):
+        return self.disconnect()
+    def getDevice(self, deviceName):
+        return self.devices.get(deviceName, None)
+    def getDevices(self, deviceList, driverInterface):
+        for dname, device in self.devices:
+            if device.getDriverInterface() | driverInterface:
+                deviceList.append(device)
+        return len(deviceList) > 0
     def message_cmd(self, elem):
         if elem.tag=='message':
             device_name=elem.get('device')
@@ -69,7 +90,10 @@ class BaseClient:
             timestamp=elem.get('timestamp')
             if not timestamp or timestamp=='':
                 timestamp=time.strftime('%Y-%m-%dT%H:%M:%S')
-            self.logger.info(timestamp+': '+message)
+            if self.mediator:
+                self.mediator.new_universal_message(timestamp+': '+message)
+            else:
+                self.logger.info(timestamp+': '+message)
         return True
     def delete_device(self, device):
         if not device or not device.name or not device.name in self.devices:
@@ -77,7 +101,7 @@ class BaseClient:
             return INDI.INDI_ERROR_TYPE.INDI_DEVICE_NOT_FOUND
         self.mediator.remove_device(device)
         self.logger.info('Deleting device '+device.name)
-        del(self.device[device.name])       
+        del(self.device[device.name])
     def del_property_cmd(self, elem):
         device_name=elem.get('device')
         if not device_name or device_name=='' or not device_name in self.devices:
@@ -194,7 +218,7 @@ class BaseClient:
         elif prop is not None:
             prop_name=prop.name
         else:
-            prop_name=""        
+            prop_name=""
         if not bmode:
             self.blob_modes[device_name+prop_name]=blob_handling
         else:
@@ -230,7 +254,7 @@ class BaseClient:
         self.socket=None
         self.is_connected=False
         self.devices.clear()
-        self.mediator.server_disconnected(0) 
+        self.mediator.server_disconnected(0)
         return True
     def set_driver_connection(self, status, device_name):
         if not device_name or device_name=='' or not device_name in self.devices:

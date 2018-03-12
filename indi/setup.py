@@ -21,7 +21,8 @@ from distutils.core import setup
 setup(
     name="indi",
     version="0.1",
-    packages=['indi', 'indi.client', 'indi.indibase'],
+    packages=['indi', 'indi.client', 'indi.indibase', 'indi.client.qt'],
+    package_data={'indi.client.qt': ['drivermanager.ui', 'indihostconf.ui']},
     author="geehalel",
     author_email="geehalel@gmail.com",
     url="https://github.com/geehalel/npindi",
