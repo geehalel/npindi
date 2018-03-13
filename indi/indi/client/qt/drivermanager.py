@@ -12,6 +12,7 @@ import os
 from indi.client.qt.indicommon import *
 from indi.client.qt.driverinfo import DriverInfo
 from indi.client.qt.clientmanager import ClientManager
+from indi.client.qt.guimanager import GUIManager
 
 class DriverManagerUI(QFrame):
     def __init__(self, parent=None):
@@ -88,7 +89,7 @@ class DriverManager(QDialog):
         hostConf = uic.loadUi(uiFile, baseinstance=hostConfDialog)
         hostConfDialog.setWindowTitle('Add Host')
         portOk = False
-        if hostConfDialog.exec() == QDialog.Accepted:
+        if hostConfDialog.exec_() == QDialog.Accepted:
             hostItem = DriverInfo(str(hostConf.nameIN.text()))
             try:
                 port = int(hostConf.portnumber.text())
@@ -131,7 +132,7 @@ class DriverManager(QDialog):
                 hostConf.nameIN.setText(host.getName())
                 hostConf.hostname.setText(host.getHost())
                 hostConf.portnumber.setText(host.getPort())
-                if hostConfDialog.exec() == QDialog.Accepted:
+                if hostConfDialog.exec_() == QDialog.Accepted:
                     host.setName(hostConf.nameIN.text())
                     host.setHostParameters(hostConf.hostname.text(),\
                      hostConf.portnumber.text())
@@ -214,7 +215,7 @@ class DriverManager(QDialog):
         clientManager.appendManagedDriver(dv)
         clientManager.connectionFailure.connect(self.processClientTermination)
         clientManager.setServer(dv.getHost().encode('latin-1', 'ignore'), port)
-        #GUIManager::Instance()->addClient(clientManager);
+        GUIManager.Instance().addClient(clientManager)
         #INDIListener::Instance()->addClient(clientManager);
         for i in range(INDI_MAX_TRIES):
             connectionToServer = clientManager.connectServer()
@@ -225,7 +226,7 @@ class DriverManager(QDialog):
             self.clients.append(clientManager)
             self.updateMenuActions()
         else:
-            #GUIManager::Instance()->removeClient(clientManager);
+            GUIManager.Instance().removeClient(clientManager)
             #INDIListener::Instance()->removelient(clientManager);
             msgBox=QMessageBox(self)
             msgBox.setAttribute(QtCore.Qt.WA_DeleteOnClose)
@@ -243,7 +244,7 @@ class DriverManager(QDialog):
         if clientManager is not None:
             clientManager.removeManagedDriver(dv)
             clientManager.disconnectServer()
-            #GUIManager::Instance()->removeClient(clientManager);
+            GUIManager.Instance().removeClient(clientManager);
             #INDIListener::Instance()->removelient(clientManager);
             self.clients.remove(clientManager)
             del(clientManager)

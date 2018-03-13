@@ -36,7 +36,7 @@ class ClientManager(BaseClient, QObject):
         dv.setClientState(False)
         for di in dv.getDevices():
             #INDIListener::Instance()->removeDevice(di);
-            #GUIManager::Instance()->removeDevice(di);
+            GUIManager.Instance().removeDevice(di);
             dv.removeDevice(di)
         self.managedDrivers.remove(dv)
         if dv.getDriverSource() == DriverSource.GENERATED_SOURCE:
