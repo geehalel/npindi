@@ -37,6 +37,7 @@ class QLoggingCategory(enum.Enum):
     def qCDebug(cat, msg):
         QtCore.qDebug(cat.value+': '+msg)
     def qCInfo(cat, msg):
-        QtCore.qInfo(cat.value+': '+msg)
+        #QtCore.qInfo(cat.value+': '+msg)
+        QtCore.qDebug(cat.value+': '+msg)
     def qCWarning(cat, msg):
         QtCore.qWarning(cat.value+': '+msg)

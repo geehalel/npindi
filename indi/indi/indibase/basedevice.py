@@ -48,6 +48,8 @@ class BaseDevice:
         self.logger=None
         self.properties=dict()
         self.message_log=[]
+    def getDeviceName(self):
+        return self.name
     def check_message(self, elem):
         message=elem.get('message')
         if not message or message=='':
@@ -205,7 +207,7 @@ class BaseDevice:
                         if self.mediator: self.mediator.new_blob(elem)
                     else:
                         if self.logger: self.logger.warn('Can not parse blob for '+elem_name+' in '+prop_name)
-                        continue  
+                        continue
             else:
                if self.logger: self.logger.error('Empty property name'+elem)
                continue

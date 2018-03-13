@@ -1,11 +1,7 @@
-from PyQt5.QtCore import Qt
+from PyQt5 import QtCore, Qt
 from PyQt5.QtWidgets import QTextEdit, QTabWidget, QSplitter, QDialog
-
-from indi.client.qt.clientmanager import ClientManager
-try:
-    from indi.client.qt.guimanager import GUIManager
-except:
-    pass
+from indi.indibase.basedevice import BaseDevice
+from indi.client.qt.indicommon import *
 
 class INDI_D(QDialog):
     def __init__(self, in_manager, in_idv, in_cm):
@@ -14,12 +10,21 @@ class INDI_D(QDialog):
         self.dv = in_idv
         self.clientManager = in_cm
         self.deviceVBox = QSplitter()
-        self.deviceBox.setOrientation(Qt.Vertical)
+        self.deviceVBox.setOrientation(QtCore.Qt.Vertical)
         self.groupContainer = QTabWidget()
         self.msgST_w = QTextEdit()
         self.msgST_w.setReadOnly(True)
         self.deviceVBox.addWidget(self.groupContainer)
-        self.deviceBox.addWidget(self.msgST_w)
+        self.deviceVBox.addWidget(self.msgST_w)
+        self.groupsList = list()
+    def getDeviceBox(self):
+        return self.deviceVBox
+    def getClientManager(self):
+        return self.clientManager
+    def getBaseDevice(self):
+        return self.dv
+    def getGroups(self):
+        return self.groupsList
     def buildProperty(self, prop):
         pass
     def removeProperty(self, prop):
@@ -34,8 +39,26 @@ class INDI_D(QDialog):
         pass
     def updateBLOBGUI(self, bp):
         pass
+    @QtCore.pyqtSlot(BaseDevice, int)
     def updateMessageLog(self, idv, messageID):
-        pass
+        if idv != self.dv: return
+        message = self.dv.message_queue(messageID)
+        formatted = message
+        if message[21:23] == '[E':
+            formatted = '<span style="color:red">{!s}</span>'.format(message)
+        elif message[21:23] == '[W':
+            formatted = '<span style="color:orange">{!s}</span>'.format(message)
+        elif message[21:23] == '[I':
+            QLoggingCategory.qCDebug(QLoggingCategory.NPINDI, idv.getDeviceName()+message[21:])
+            return
+        self.msgST_w.ensureCursorVisible()
+        self.msgST_w.insertHtml(formatted)
+        self.msgST_w.insertPlainText('\n')
+        c = self.msgST_w.textCursor()
+        c.movePosition(Qt.QTextCursor.Start)
+        self.msgST_w.setTextCursor(c)
+        QLoggingCategory.qCInfo(QLoggingCategory.NPINDI, idv.getDeviceName()+': '+message[21:])
+
     def getGroup(self, groupName):
         pass
     def clearMessageLog(self):

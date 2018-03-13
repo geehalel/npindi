@@ -1,9 +1,7 @@
 from PyQt5 import QtCore
-from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QPushButton, QTabWidget, QHBoxLayout, QVBoxLayout, QWidget
 from PyQt5.QtGui import QCloseEvent, QHideEvent, QShowEvent, QIcon
 
-from indi.client.qt.clientmanager import ClientManager
 from indi.client.qt.deviceinfo import DeviceInfo
 from indi.client.qt.indidevice import INDI_D
 
@@ -11,41 +9,43 @@ import time
 
 class GUIManager(QWidget):
     __instance = None
-    def __new__(cls):
+    def __new__(cls, parent):
         if GUIManager.__instance is None:
             GUIManager.__instance = QWidget.__new__(cls)
         return GUIManager.__instance
     def __init__(self, parent):
         if GUIManager.__instance is not None: pass
-        super.__init(parent=parent, f=Qt.Window)
+        super().__init__(parent=parent, flags=QtCore.Qt.Window)
         self.mainLayout = QVBoxLayout(self)
-        self.mainLayout.setMargin(10)
+        #self.mainLayout.setMargin(10)
+        self.mainLayout.setContentsMargins(10, 10, 10, 10)
         self.mainLayout.setSpacing(10)
         self.mainTabWidget = QTabWidget(self)
         self.mainLayout.addWidget(self.mainTabWidget)
         self.setWindowIcon(QIcon.fromTheme('kstars_indi'))
         self.setWindowTitle('PyQt INDI Control Panel')
-        self.setAttribute(Qt.WA_ShowModal, False)
+        #self.setAttribute(QtCore.Qt.WA_ShowModal, False)
         self.clearB = QPushButton('Clear')
         self.closeB = QPushButton('Close')
         buttonLayout = QHBoxLayout()
-        buttonLayout.InsertStretch(0)
-        buttonLayout.addWidget(self.clearB, 0, Qt.AlignRight)
-        buttonLayout.addWidget(self.closeB, 0, Qt.AlignRight)
+        #buttonLayout.InsertStretch(0, 0)
+        buttonLayout.addWidget(self.clearB, 0, QtCore.Qt.AlignRight)
+        buttonLayout.addWidget(self.closeB, 0, QtCore.Qt.AlignRight)
         self.mainLayout.addLayout(buttonLayout)
         self.closeB.clicked.connect(self.close)
         self.clearB.clicked.connect(self.clearLog)
         self.clients = list()
         self.guidevices = list()
-    def Instance():
+    @classmethod
+    def Instance(cls):
         if GUIManager.__instance is None:
-            GUIManager.__instance = GUIManager.__new__(GuiManager)
+            GUIManager.__instance = GUIManager(parent=None)
         return GUIManager.__instance
     def getDevices(self):
         return self.devices
     def size(self):
         return len(self.guidevices)
-    @QtCore.pyqtSlot(Qt.ApplicationState)
+    @QtCore.pyqtSlot(QtCore.Qt.ApplicationState)
     def changeAlwaysOnTop(self, state):
         pass
     def closeEvent(self, event):
@@ -75,7 +75,7 @@ class GUIManager(QWidget):
     def addClient(self, cm):
         self.clients.append(cm)
         cm.newINDIDevice.connect(self.buildDevice)
-        cm.removeINDIDevice.connect(self.remveDevice)
+        cm.removeINDIDevice.connect(self.removeDevice)
     def removeClient(self, cm):
         self.clients.remove(cm)
         for gdv in self.guidevices:
@@ -114,7 +114,7 @@ class GUIManager(QWidget):
             return
         gdm = INDI_D( self, di.getBaseDevice(), cm)
         cm.newINDIProperty.connect(gdm.buildProperty)
-        cm.removeINDIProperty,connect(gdm.removeProperty)
+        cm.removeINDIProperty.connect(gdm.removeProperty)
         cm.newINDISwitch.connect(gdm.updateSwitchGUI)
         cm.newINDIText.connect(gdm.updateTextGUI)
         cm.newINDINumber.connect(gdm.updateNumberGUI)

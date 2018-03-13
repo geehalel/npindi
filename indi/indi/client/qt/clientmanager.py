@@ -5,6 +5,8 @@ from indi.indibase.baseclient import BaseClient
 from indi.indibase.basedevice import BaseDevice
 from indi.client.qt.deviceinfo import DeviceInfo
 from indi.client.qt.indicommon import *
+from indi.client.qt.guimanager import GUIManager
+
 
 class ClientManager(BaseClient, QObject):
     newINDIDevice=QtCore.pyqtSignal(DeviceInfo)
