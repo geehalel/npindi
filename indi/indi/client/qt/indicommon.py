@@ -18,6 +18,15 @@ class DriverSource(enum.Enum):
 class ServerMode(enum.Enum):
     SERVER_CLIENT = 0
     SERVER_ONLY = 1
+class PGui(enum.Enum):
+    PG_NONE = 0
+    PG_TEXT = 1
+    PG_NUMERIC = 2
+    PG_BUTTONS = 3
+    PG_RADIO = 4
+    PG_MENU = 5
+    PG_LIGHTS = 6
+    PG_BLOB = 7
 class DeviceFamily(enum.Enum):
     """
     Devices families that we explicitly support (i.e. with std properties)

@@ -17,6 +17,7 @@
 
 import base64
 import zlib
+from collections import OrderedDict
 
 from indi.INDI import INDI, IText, INumber, ISwitch, IBLOB, ILight, IVectorProperty
 
@@ -46,7 +47,7 @@ class BaseDevice:
         self.name=None
         self.mediator=None
         self.logger=None
-        self.properties=dict()
+        self.properties=OrderedDict()
         self.message_log=[]
     def getDeviceName(self):
         return self.name
@@ -99,7 +100,7 @@ class BaseDevice:
             if self.logger: self.logger.error('Error extracting '+ prop_name + ' state: ' + elem.get('state'))
             return INDI.INDI_ERROR_TYPE.INDI_PROPERTY_INVALID
         timestamp=elem.get('timestamp')
-        new_prop=IVectorProperty(self, prop_name, label, group, perm, timeout, state, prop_type, timestamp)
+        new_prop=IVectorProperty(self, prop_name, label, group, perm, rule, timeout, state, prop_type, timestamp)
         if perm:
             new_prop.perm=perm
         if rule:

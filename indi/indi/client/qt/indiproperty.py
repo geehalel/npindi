@@ -1,6 +1,6 @@
 from PyQt5.QtCore import QObject
 from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import QSizePolicy, QCheckBox, QPushButton, QSpacerItem, QVBoxLayout, QHBoxLayout, QButtonGroup, QComboBox, QLabel, QFrame
+from PyQt5.QtWidgets import QAbstractButton, QSizePolicy, QCheckBox, QPushButton, QSpacerItem, QVBoxLayout, QHBoxLayout, QButtonGroup, QComboBox, QLabel, QFrame
 
 from indi.client.qt.indicommon import *
 from indi.INDI import *
@@ -15,9 +15,10 @@ class INDI_P(QObject):
         self.PHBox.setContentsMargins(0, 0, 0, 0)
         self.PVBox = QVBoxLayout()
         self.PVBox.setContentsMargins(0, 0, 0, 0)
+        self.guiType = PGui.PG_NONE
         self.elementList = list()
         self.initGUI()
-        self.updateStateLed()
+        self.updateStateLED()
     def getGUIType(self):
         return self.guiType
     def getGroup(self):
@@ -40,7 +41,7 @@ class INDI_P(QObject):
         self.labelW.setWordWrap(True)
         self.PHBox.addWidget(self.labelW)
         self.labelW.show()
-
+        QLoggingCategory.qCDebug(QLoggingCategory.NPINDI,'property '+label)
         self.PHBox.addLayout(self.PVBox)
         ptype = self.dataProp.getType()
         if ptype == INDI.INDI_PROPERTY_TYPE.INDI_TEXT:
@@ -50,10 +51,19 @@ class INDI_P(QObject):
         elif ptype == INDI.INDI_PROPERTY_TYPE.INDI_LIGHT:
             self.buildLightGUI()
         elif ptype == INDI.INDI_PROPERTY_TYPE.INDI_SWITCH:
-            self.buildSwitchGUI()
+            if self.dataProp.r == INDI.ISRule.ISR_1OFMANY:
+                self.guiType = PGui.PG_RADIO
+            elif len(self.dataProp.vp) > 4:
+                self.guiType = PGui.PG_MENU
+            else:
+                self.guiType = PGui.PG_BUTTONS
+            if self.guiType == PGui.PG_MENU:
+                self.buildMenuGUI()
+            else:
+                self.buildSwitchGUI()
         elif ptype == INDI.INDI_PROPERTY_TYPE.INDI_BLOB:
             self.buildBLOBGUI()
-    def updateStateLed(self):
+    def updateStateLED(self):
         pstate=self.dataProp.getState()
         if pstate == INDI.IPState.IPS_IDLE:
             self.labelW.setStyleSheet('QLabel {color: gray}')
@@ -92,9 +102,92 @@ class INDI_P(QObject):
     def buildLightGUI(self):
         pass
     def buildSwitchGUI(self):
-        pass
+        svp = self.dataProp.vp
+        if svp is None:
+            return
+        self.groupB = QButtonGroup()
+        if self.guiType == PGui.PG_BUTTONS:
+            if self.dataProp.r == INDI.ISRule.ISR_1OFMANY:
+                self.groupB.setExclusive(True)
+            else:
+                self.groupB.setExclusive(False)
+        elif self.guiType == PGui.PG_RADIO:
+            self.groupB.setExclusive(False)
+        if self.dataProp.p != INDI.IPerm.IP_RO:
+            self.groupB.buttonClicked.connect(self.newSwitch)
+        for sp in svp.values():
+            lp = INDI_E(self, self.dataProp)
+            lp.buildSwitch(self.groupB, sp)
+            self.elementList.append(lp)
+        horSpacer = QSpacerItem(20, 20, QSizePolicy.Expanding, QSizePolicy.Minimum)
+        self.PHBox.addItem(horSpacer)
+    def buildMenuGUI(self):
+        onItem = -1
+        onIndex = 0
+        menuOptions = list()
+        svp = self.dataProp.vp
+        if svp is None:
+            return
+        self.menuC = QComboBox(self.pg.getContainer())
+        if self.dataProp.p == INDI.IPerm.IP_RO:
+            self.menuC.activated.connect(self.resetSwitch)
+        else:
+            self.menuC.activated.connect(self.newSwitch)
+        for sp in svp.values():
+            if sp.s == INDI.ISState.ISS_ON:
+                onItem = onIndex
+            onIndex += 1
+            lp = INDI_E(self, self.dataProp)
+            lp.buildMenuItem(sp)
+            oneOption = lp.getLabel()
+            menuOptions.append(oneOption)
+            elementList.append(lp)
+        self.menuC.addItems(menuOptions)
+        self.menuC.setCurrentIndex(onItem)
+        horSpacer = QSpacerItem(20, 20, QSizePolicy.Expanding, QSizePolicy.Minimum)
+        self.PHBox.addWidget(self.menuC)
+        self.PHBox.addItem(horSpacer)
     def buildBLOBGUI(self):
         pass
+    @QtCore.pyqtSlot(QAbstractButton)
+    def newSwitch(self, param):
+        svp = self.dataProp.vp
+        if svp is None:
+            return
+        index = None
+        name = None
+        button = None
+        if isinstance(param, str):
+            name = param
+        elif isinstance(param, int):
+            index = param
+        else:
+            button = param
+        if button is not None:
+            buttonText = button.text().replace('&','')
+            for el in self.elementList:
+                if el.getLabel() == buttonText:
+                    name = el.getName()
+                    break
+        if index is not None:
+            sp = svp[list(svp)[index]]
+            INDI.IUResetSwitch(self.dataProp)
+            sp.s = INDI.ISState.ISS_ON
+            self.sendSwitch()
+        if name is not None:
+            sp = INDI.IUFindSwitch(self.dataProp, name)
+            if sp is None: return
+            if self.dataProp.r == INDI.ISRule.ISR_1OFMANY:
+                INDI.IUResetSwitch(self.dataProp)
+                sp.s = INDI.ISState.ISS_ON
+            else:
+                if self.dataProp.r == INDI.ISRule.ISR_ATMOST1:
+                    prev_state = sp.s
+                    INDI.IUResetSwitch(self.dataProp)
+                    sp.s = prev_state
+                sp.s = INDI.ISState.ISS_OFF if sp.s == INDI.ISState.ISS_ON else INDI.ISState.ISS_ON
+            self.sendSwitch()
+
     def setupSetButton(self, caption):
         self.setB = QPushButton(caption, self.pg.getContainer())
         self.setB.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
@@ -112,6 +205,15 @@ class INDI_P(QObject):
         elif ptype == INDI.INDI_PROPERTY_TYPE.INDI_BLOB:
             self.sendBlob()
     @QtCore.pyqtSlot()
+    def sendSwitch(self):
+        if self.dataProp is None:
+            return
+        self.dataProp.s = INDI.IPState.IPS_BUSY
+        for el in self.elementList:
+            el.syncSwitch()
+        self.updateStateLED()
+        self.pg.getDevice().getClientManager().send_new_property(self.dataProp)
+    @QtCore.pyqtSlot()
     def sendText(self):
         pass
     @QtCore.pyqtSlot()
@@ -121,6 +223,3 @@ class INDI_P(QObject):
         self.PHBox.addWidget(w)
     def addLayout(self, layout):
         self.PVBox.addLayout(layout)
-    @QtCore.pyqtSlot()
-    def sendText(self):
-        pass

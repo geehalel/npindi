@@ -15,12 +15,42 @@ class INDI_E(QObject):
         self.write_w = None
         self.spin_w = None
         self.slider_w = None
+        self.push_w = None
+        self.check_w = None
         self.tp = None
         self.np = None
     def getLabel(self):
         return self.label
     def getName(self):
         return self.name
+    def buildSwitch(self, groupB, sw):
+        self.name = sw.name
+        self.label = sw.label
+        if not self.label:
+            self.label = self.name
+        self.sp = sw
+        if groupB is None:
+            return
+        pgtype = self.guiProp.getGUIType()
+        if pgtype == PGui.PG_BUTTONS:
+            self.push_w = QPushButton(self.label, self.guiProp.getGroup().getContainer())
+            self.push_w.setCheckable(True)
+            groupB.addButton(self.push_w)
+            self.syncSwitch()
+            self.guiProp.addWidget(self.push_w)
+            self.push_w.show()
+            if sw.svp.p == INDI.IPerm.IP_RO:
+                self.push_w.setEnabled(sw.s == INDI.ISState.ISS_ON)
+        elif pgtype == PGui.PG_RADIO:
+            self.check_w = QCheckBox(self.label, self.guiProp.getGroup().getContainer())
+            groupB.addButton(self.check_w)
+            self.syncSwitch()
+            self.guiProp.addWidget(self.check_w)
+            self.check_w.show()
+            if sw.svp.p == INDI.IPerm.IP_RO:
+                self.check_w.setEnabled(sw.s == INDI.ISState.ISS_ON)
+    def builMenuItem(self, sw):
+        self.buildSwitch(None, sw)
     def buildText(self, itp):
         self.name = itp.name
         self.label = itp.label
@@ -65,7 +95,48 @@ class INDI_E(QObject):
             else:
                 self.setupElementWrite(ELEMENT_FULL_WIDTH)
         self.guiProp.addLayout(self.EHBox)
-
+    def syncSwitch(self):
+        pgtype = self.guiProp.getGUIType()
+        if pgtype == PGui.PG_BUTTONS:
+            if self.sp.s == INDI.ISState.ISS_ON:
+                self.push_w.setChecked(True)
+                buttonFont = self.push_w.font()
+                buttonFont.setBold(True)
+                self.push_w.setFont(buttonFont)
+                if self.sp.svp.p == INDI.IPerm.IP_RO:
+                    self.push_w.setEnabled(True)
+            else:
+                self.push_w.setChecked(False)
+                buttonFont = self.push_w.font()
+                buttonFont.setBold(False)
+                self.push_w.setFont(buttonFont)
+                if self.sp.svp.p == INDI.IPerm.IP_RO:
+                    self.push_w.setEnabled(False)
+        elif pgtype == PGui.PG_RADIO:
+            if self.sp.s == INDI.ISState.ISS_ON:
+                self.check_w.setChecked(True)
+                if self.sp.svp.p == INDI.IPerm.IP_RO:
+                    self.check_w.setEnabled(True)
+            else:
+                self.check_w.setChecked(False)
+                if self.sp.svp.p == INDI.IPerm.IP_RO:
+                    self.check_w.setEnabled(False)
+    def syncText(self):
+        if self.tp is None: return
+        if self.tp.tvp.p != INDI.IPerm.IP_WO:
+            self.read_w.setText(self.tp.text)
+        else:
+            self.write_w.setText(self.tp.text)
+    def syncNumber(self):
+        if self.np is None or self.read_w is None:
+            return
+        self.text = numberFormat(self.np.format, self.np.value)
+        self.read_w.setText(self.text)
+        if self.spin_w:
+            if self.np.min != self.spin_w.minimum():
+                self.setMin()
+            if self.np.max != self.spin_w.maximum():
+                self.setMax()
     def setupElementLabel(self):
         self.label_w = QLabel(self.guiProp.getGroup().getContainer())
         self.label_w.setMinimumWidth(ELEMENT_LABEL_WIDTH)

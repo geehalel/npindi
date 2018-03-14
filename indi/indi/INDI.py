@@ -17,6 +17,7 @@
 
 import enum
 import re
+from collections import OrderedDict
 class INDI:
     MAXINDIBUF=49152
     INDIV=b'1.7'
@@ -138,6 +139,23 @@ class INDI:
             return INDI.fs_sexa(value, w - f, s)
         else:
             return fmt % value
+    def IUFindSwitch(svp, name):
+        return svp.vp.get(name, None)
+    def IUFindOnSwitch(svp):
+        for sp in svp.vp.values():
+            if sp.s == INDI.ISState.ISS_ON:
+                return sp
+        return None
+    def IUFindOnSwitchIndex(svp):
+        index = 0
+        for sp in svp.vp.values():
+            if sp.s == INDI.ISState.ISS_ON:
+                return index
+            index += 1
+        return -1
+    def IUResetSwitch(svp):
+        for sp in svp.vp.values():
+            sp.s = INDI.ISState.ISS_OFF
 class IText:
     def __init__(self, name, label, text, parent, aux0=None, aux1=None):
         self.name=name
@@ -195,16 +213,17 @@ class IBLOB:
     def __str__(self):
         return self.blob
 class IVectorProperty:
-    def __init__(self, device, name, label, group, perm, timeout, state, prop_type, timestamp):
+    def __init__(self, device, name, label, group, perm, rule, timeout, state, prop_type, timestamp):
         self.device=device
         self.name=name
         self.label=label
         self.group=group
         self.p = perm
+        self.r = rule
         self.timeout=timeout
         self.s=state
         self.type=prop_type
-        self.vp=dict()
+        self.vp=OrderedDict()
         self.timestamp=timestamp
         self.aux=None
     def __str__(self):
