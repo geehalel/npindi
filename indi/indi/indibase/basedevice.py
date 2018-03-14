@@ -99,7 +99,7 @@ class BaseDevice:
             if self.logger: self.logger.error('Error extracting '+ prop_name + ' state: ' + elem.get('state'))
             return INDI.INDI_ERROR_TYPE.INDI_PROPERTY_INVALID
         timestamp=elem.get('timestamp')
-        new_prop=IVectorProperty(self, prop_name, label, group, timeout, state, prop_type, timestamp)
+        new_prop=IVectorProperty(self, prop_name, label, group, perm, timeout, state, prop_type, timestamp)
         if perm:
             new_prop.perm=perm
         if rule:

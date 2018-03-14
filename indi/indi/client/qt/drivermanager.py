@@ -82,6 +82,19 @@ class DriverManager(QDialog):
         self.ui.localTreeWidget.itemClicked.connect(self.updateLocalTab)
         self.ui.clientTreeWidget.itemClicked.connect(self.updateClientTab)
         self.ui.localTreeWidget.expanded.connect(self.resizeDeviceColumn)
+        #For testing purpose
+        hostItem=DriverInfo('localhost')
+        hostItem.setHostParameters('localhost', '7624')
+        hostItem.setDriverSource(DriverSource.HOST_SOURCE)
+        hostItem.deviceStateChanged.connect(self.processDeviceStatus)
+        self.driversList.append(hostItem)
+        item = QTreeWidgetItem(self.ui.clientTreeWidget)
+        item.setIcon(self.HostColumns.HOST_STATUS_COLUMN.value,
+            self.ui.disconnected)
+        item.setText(self.HostColumns.HOST_NAME_COLUMN.value,
+            'localhost')
+        item.setText(self.HostColumns.HOST_PORT_COLUMN.value,
+            '7624')
     def addINDIHost(self):
         hostConfDialog = QDialog()
         uiFile = os.path.dirname(inspect.getfile(inspect.currentframe()))

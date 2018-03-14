@@ -44,8 +44,8 @@ class INDI:
         IP_RW='rw'
     class BLOBHandling(enum.Enum):
         B_NEVER = 'Never'
-        B_ALSO = 'Also'      
-        B_ONLY = 'Only'    
+        B_ALSO = 'Also'
+        B_ONLY = 'Only'
     class INDI_PROPERTY_TYPE(enum.Enum):
         INDI_NUMBER = 'INDI_NUMBER'
         INDI_SWITCH = 'INDI_SWITCH'
@@ -87,11 +87,57 @@ class INDI:
         if m.lastindex == 1:
             return float(m.group(1))
         elif m.lastindex == 2:
-            return float(m.group(1)) + (float(m.group(2))/60.0) 
+            return float(m.group(1)) + (float(m.group(2))/60.0)
         elif m.lastindex == 2:
             return float(m.group(1)) + (float(m.group(2))/60.0) + (float(m.group(3))/3600.0)
         else:
             return None
+    def fs_sexa(a, w, fracbase):
+        out = ''
+        isneg = a < 0
+        if isneg:
+            a = -a
+        n = int(a * fracbase + 0.5)
+        d = n // fracbase
+        f = n % fracbase
+        if isneg and d == 0:
+            out += '%*s-0' % (w-2, '')
+        else:
+            out += '%*d' % (w, -d if isneg else d)
+        if fracbase == 60:
+            m = f // (fracbase // 60)
+            out += ':%02d' % m
+        elif fracbase == 600:
+            out += ':%02d.%1d' % (f // 10, f % 10)
+        elif fracbase == 3600:
+            m = f / (fracbase // 60)
+            s = f % (fracbase // 60)
+            out += ':%02d:%02d' % (m ,s)
+        elif fracabse == 36000:
+            m = f / (fracbase // 60)
+            s = f % (fracbase // 60)
+            out += ':%02d:%02d.%1d' % (m ,s // 10, s % 10)
+        elif fracbase == 360000:
+            m = f / (fracbase // 60)
+            s = f % (fracbase // 60)
+            out += ':%02d:%02d.%02d' % (m ,s // 100, s % 100)
+        else:
+            return None
+        return out
+    def numberFormat(fmt, value):
+        if fmt[0] != '%': raise ValueError
+        m = fmt[-1]
+        l = fmt[1:-1].split('.')
+        if len(l) == 2 and m == 'm':
+            cbase = {9: 360000, 8: 36000, 6: 3600, 5: 600}
+            w = int(l[0])
+            f = int(l[1])
+            s = 60
+            if f in cbase:
+                s = cbase[f]
+            return INDI.fs_sexa(value, w - f, s)
+        else:
+            return fmt % value
 class IText:
     def __init__(self, name, label, text, parent, aux0=None, aux1=None):
         self.name=name
@@ -149,11 +195,12 @@ class IBLOB:
     def __str__(self):
         return self.blob
 class IVectorProperty:
-    def __init__(self, device, name, label, group, timeout, state, prop_type, timestamp):
+    def __init__(self, device, name, label, group, perm, timeout, state, prop_type, timestamp):
         self.device=device
         self.name=name
         self.label=label
         self.group=group
+        self.p = perm
         self.timeout=timeout
         self.s=state
         self.type=prop_type
@@ -162,3 +209,19 @@ class IVectorProperty:
         self.aux=None
     def __str__(self):
         return '<IVectorProperty: '+(self.name) +', type='+str(self.type.value)+', device='+self.device.name+'>'
+    def getGroupName(self):
+        return self.group
+    def getDeviceName(self):
+        return self.device.getDeviceName()
+    def getName(self):
+        return self.name
+    def getLabel(self):
+        return self.label
+    def getTimestamp(self):
+        return self.timestamp
+    def getState(self):
+        return self.s
+    def getType(self):
+        return self.type
+    def getPermission(self):
+        return self.p

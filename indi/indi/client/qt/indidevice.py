@@ -2,6 +2,7 @@ from PyQt5 import QtCore, Qt
 from PyQt5.QtWidgets import QTextEdit, QTabWidget, QSplitter, QDialog
 from indi.indibase.basedevice import BaseDevice
 from indi.client.qt.indicommon import *
+from indi.client.qt.indigroup import INDI_G
 
 class INDI_D(QDialog):
     def __init__(self, in_manager, in_idv, in_cm):
@@ -26,7 +27,15 @@ class INDI_D(QDialog):
     def getGroups(self):
         return self.groupsList
     def buildProperty(self, prop):
-        pass
+        groupName = prop.getGroupName()
+        if prop.getDeviceName() != self.dv.getDeviceName():
+            return False
+        pg = self.getGroup(groupName)
+        if pg is None:
+            pg = INDI_G(self, groupName)
+            self.groupsList.append(pg)
+            self.groupContainer.addTab(pg.getScrollArea(), groupName)
+        return pg.addProperty(prop)
     def removeProperty(self, prop):
         pass
     def updateSwitchGUI(self, svp):
@@ -60,6 +69,9 @@ class INDI_D(QDialog):
         QLoggingCategory.qCInfo(QLoggingCategory.NPINDI, idv.getDeviceName()+': '+message[21:])
 
     def getGroup(self, groupName):
-        pass
+        for pg in self.groupsList:
+            if pg.getName() == groupName:
+                return pg
+        return None
     def clearMessageLog(self):
-        pass
+        self.msgST_w.clear()
