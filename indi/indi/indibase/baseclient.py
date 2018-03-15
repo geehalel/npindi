@@ -45,7 +45,7 @@ class BaseClient:
         self.port=port
         self.timeout=3
         self.is_connected=False
-        self.socket=None
+        self.client_socket=None
         self.listener=None
         self.devices=dict()
         self.blob_modes=dict()
@@ -149,8 +149,8 @@ class BaseClient:
             return device.set_value(elem)
         return False
     def send_string(self, s):
-        if self.socket:
-            self.socket.sendall(s.encode(encoding='ascii'))
+        if self.client_socket:
+            self.client_socket.sendall(s.encode(encoding='ascii'))
     def send_new_property(self, p):
         self.send_string("<new"+BaseClient._prop_tags[p.type]+"\n  device='"+p.device.name+"'\n  name='"+p.name+"'>\n")
         for ename, elem in p.vp.items():
@@ -174,8 +174,8 @@ class BaseClient:
         self.send_string("    size='"+len(blobdata)+"'\n")
         self.send_string("    enclen='"+len(b64blob)+"'\n")
         self.send_string("    format='"+blob_format+"'>\n")
-        if self.socket:
-            self.socket.sendall(b64blob)
+        if self.client_socket:
+            self.client_socket.sendall(b64blob)
         self.send_string("  </oneBLOB>\n")
     def send_blob(self, blob):
         self.start_blob(blob.device.name, blob.name, datetime.datetime.now().isoformat())
@@ -233,10 +233,10 @@ class BaseClient:
     def connect(self):
         if self.is_connected:
             return True
-        self.socket=socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.socket.settimeout(self.timeout)
+        self.client_socket=socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.client_socket.settimeout(self.timeout)
         try:
-            self.socket.connect((self.host, self.port))
+            self.client_socket.connect((self.host, self.port))
         except:
             return False
         self.listener=Listener(self)
@@ -250,8 +250,8 @@ class BaseClient:
         self.listener.stop()
         self.listener.join()
         self.listener=None
-        self.socket.close()
-        self.socket=None
+        self.client_socket.close()
+        self.client_socket=None
         self.is_connected=False
         self.devices.clear()
         self.mediator.server_disconnected(0)

@@ -130,13 +130,28 @@ class INDI_E(QObject):
     def syncNumber(self):
         if self.np is None or self.read_w is None:
             return
-        self.text = numberFormat(self.np.format, self.np.value)
+        self.text = INDI.numberFormat(self.np.format, self.np.value)
         self.read_w.setText(self.text)
         if self.spin_w:
             if self.np.min != self.spin_w.minimum():
                 self.setMin()
             if self.np.max != self.spin_w.maximum():
                 self.setMax()
+    def updateTP(self):
+        if self.tp is None: return
+        self.tp.text = self.write_w.text()
+    def updateNP(self):
+        if self.np is None: return
+        if self.write_w is not None:
+            if not self.write_w.text():
+                return
+            #QLoggingCategory.qCDebug(QLoggingCategory.NPINDI,'updateNP '+self.write_w.text().replace(',','.'))
+            try:
+                self.np.value = INDI.f_scan_sexa(self.write_w.text().replace(',','.').strip())
+            except:
+                pass
+        if self.spin_w is not None:
+            self.np.value = self.spin_w.value()
     def setupElementLabel(self):
         self.label_w = QLabel(self.guiProp.getGroup().getContainer())
         self.label_w.setMinimumWidth(ELEMENT_LABEL_WIDTH)

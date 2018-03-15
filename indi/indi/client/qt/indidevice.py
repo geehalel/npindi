@@ -37,13 +37,67 @@ class INDI_D(QDialog):
             self.groupContainer.addTab(pg.getScrollArea(), groupName)
         return pg.addProperty(prop)
     def removeProperty(self, prop):
-        pass
+        if prop is None: return False
+        groupName = prop.getGroupName()
+        if prop.getDeviceName() != self.dv.getDeviceName():
+            return False
+        pg =self.getGroup(groupName)
+        if pg is None:
+            return False
+        removeResult = pg.removeProperty(prop.getName())
+        if pg.size() == 0 and removeResult:
+            self.groupContainer.removeTab(self.groupsList.index(pg))
+            self.groupsList.remove(pg)
+            del(pg)
+        return removeResult
     def updateSwitchGUI(self, svp):
-        pass
+        guiProp = None
+        propName = svp.name
+        if svp.device.getDeviceName() != self.dv.getDeviceName():
+            return False
+        for pg in self.groupsList:
+            guiProp = pg.getProperty(propName)
+            if guiProp is not None:
+                break
+        if guiProp  is None:
+            return False
+        guiProp.updateStateLED()
+        if guiProp.getGUIType() == PGui.PG_MENU:
+            guiProp.updateMenuGUI()
+        else:
+            for lp in guiProp.getElements():
+                lp.syncSwitch()
+        return True
     def updateTextGUI(self, tvp):
-        pass
+        guiProp = None
+        propName = tvp.name
+        if tvp.device.getDeviceName() != self.dv.getDeviceName():
+            return False
+        for pg in self.groupsList:
+            guiProp = pg.getProperty(propName)
+            if guiProp is not None:
+                break
+        if guiProp  is None:
+            return False
+        guiProp.updateStateLED()
+        for lp in guiProp.getElements():
+            lp.syncText()
+        return True
     def updateNumberGUI(self, nvp):
-        pass
+        guiProp = None
+        propName = nvp.name
+        if nvp.device.getDeviceName() != self.dv.getDeviceName():
+            return False
+        for pg in self.groupsList:
+            guiProp = pg.getProperty(propName)
+            if guiProp is not None:
+                break
+        if guiProp  is None:
+            return False
+        guiProp.updateStateLED()
+        for lp in guiProp.getElements():
+            lp.syncNumber()
+        return True
     def updateLightGUI(self, lvp):
         pass
     def updateBLOBGUI(self, bp):

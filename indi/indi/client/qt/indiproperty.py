@@ -41,7 +41,7 @@ class INDI_P(QObject):
         self.labelW.setWordWrap(True)
         self.PHBox.addWidget(self.labelW)
         self.labelW.show()
-        QLoggingCategory.qCDebug(QLoggingCategory.NPINDI,'property '+label)
+        #QLoggingCategory.qCDebug(QLoggingCategory.NPINDI,'property '+label)
         self.PHBox.addLayout(self.PVBox)
         ptype = self.dataProp.getType()
         if ptype == INDI.INDI_PROPERTY_TYPE.INDI_TEXT:
@@ -147,6 +147,9 @@ class INDI_P(QObject):
         horSpacer = QSpacerItem(20, 20, QSizePolicy.Expanding, QSizePolicy.Minimum)
         self.PHBox.addWidget(self.menuC)
         self.PHBox.addItem(horSpacer)
+    def updateMenuGUI(self):
+        currentIndex = IUFindOnSwitchIndex(self.dataProp)
+        self.menuC.setCurrentIndex(currentIndex)
     def buildBLOBGUI(self):
         pass
     @QtCore.pyqtSlot(QAbstractButton)
@@ -215,7 +218,24 @@ class INDI_P(QObject):
         self.pg.getDevice().getClientManager().send_new_property(self.dataProp)
     @QtCore.pyqtSlot()
     def sendText(self):
-        pass
+        ptype = self.dataProp.getType()
+        if ptype == INDI.INDI_PROPERTY_TYPE.INDI_TEXT:
+            tvp = self.dataProp.vp
+            if tvp is None:
+                return
+            self.dataProp.s = INDI.IPState.IPS_BUSY
+            for el in self.elementList:
+                el.updateTP()
+            self.pg.getDevice().getClientManager().send_new_property(self.dataProp)
+        elif ptype == INDI.INDI_PROPERTY_TYPE.INDI_NUMBER:
+            nvp = self.dataProp.vp
+            if nvp is None:
+                return
+            self.dataProp.s = INDI.IPState.IPS_BUSY
+            for el in self.elementList:
+                el.updateNP()
+            self.pg.getDevice().getClientManager().send_new_property(self.dataProp)
+        self.updateStateLED()
     @QtCore.pyqtSlot()
     def sendBlob(self):
         pass

@@ -1,14 +1,14 @@
 from PyQt5.QtCore import QObject#, QLoggingCategory
 
 from indi.INDI import *
-from indi.indibase.baseclient import BaseClient
+from indi.indibase.baseclientqt import BaseClientQt
 from indi.indibase.basedevice import BaseDevice
 from indi.client.qt.deviceinfo import DeviceInfo
 from indi.client.qt.indicommon import *
 from indi.client.qt.guimanager import GUIManager
 
 
-class ClientManager(BaseClient, QObject):
+class ClientManager(BaseClientQt):
     newINDIDevice=QtCore.pyqtSignal(DeviceInfo)
     removeINDIDevice=QtCore.pyqtSignal(DeviceInfo)
     newINDIProperty=QtCore.pyqtSignal(IVectorProperty)
@@ -24,8 +24,7 @@ class ClientManager(BaseClient, QObject):
     #connectionFailure=QtCore.pyqtSignal(ClientManager)
     connectionFailure=QtCore.pyqtSignal(QObject)
     def __init__(self):
-        BaseClient.__init__(self, mediator=self)
-        QObject.__init__(self)
+        BaseClientQt.__init__(self, mediator=self)
         self.managedDrivers = list()
         self.sManager = None
     def isDriverManaged(self, di):

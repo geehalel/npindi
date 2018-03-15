@@ -151,7 +151,7 @@ class BaseDevice:
         self.check_message(elem)
         state=elem.get('state')
         if state:
-            prop.state=INDI.crackIndi(state, INDI.IPState)
+            prop.s=INDI.crackIndi(state, INDI.IPState)
         timeout=elem.get('timeout')
         if timeout:
             prop.timeout=timeout
