@@ -1,3 +1,20 @@
+# Copyright 2018 geehalel@gmail.com
+#
+# This file is part of npindi.
+#
+#    npindi is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    npindi is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with npindi.  If not, see <http://www.gnu.org/licenses/>.
+
 from PyQt5 import Qt
 from PyQt5.QtWidgets import QFrame, QVBoxLayout, QSpacerItem, QScrollArea, QLayout
 from indi.client.qt.indiproperty import INDI_P
@@ -16,7 +33,7 @@ class INDI_G:
         self.scrollArea.setWidget(self.propertyContainer)
         self.scrollArea.setMinimumSize(idv.size())
         self.propList = list()
-    def removeWidgets(self):        
+    def removeWidgets(self):
         self.scrollArea.deleteLater()
         self.propertyLayout.deleteLater()
     def getContainer(self):

@@ -83,6 +83,7 @@ class BaseDevice:
         perm=None
         if prop_type!=INDI.INDI_PROPERTY_TYPE.INDI_LIGHT:
             perm=INDI.crackIndi(elem.get('perm'), INDI.IPerm)
+            #if self.logger: self.logger.error('Property perm: ' +perm.value+' for \''+prop_name+'\' in device '+ device_name)
             if not perm:
                 if self.logger: self.logger.error('Error extracting '+ prop_name + ' permission: ' + elem.get('perm'))
                 return INDI.INDI_ERROR_TYPE.INDI_PROPERTY_INVALID
@@ -119,10 +120,10 @@ class BaseDevice:
                 elif prop_type==INDI.INDI_PROPERTY_TYPE.INDI_TEXT:
                     new_prop.vp[pelem_name]=IText(pelem_name, pelem_label, text_value, new_prop)
                 elif prop_type==INDI.INDI_PROPERTY_TYPE.INDI_NUMBER:
-                    numformat=pelem.get('format')
-                    minvalue=INDI.f_scan_sexa(pelem.get('min'))
-                    maxvalue=INDI.f_scan_sexa(pelem.get('max'))
-                    stepvalue=INDI.f_scan_sexa(pelem.get('step'))
+                    numformat=pelem.get('format').strip()
+                    minvalue=INDI.f_scan_sexa(pelem.get('min').strip())
+                    maxvalue=INDI.f_scan_sexa(pelem.get('max').strip())
+                    stepvalue=INDI.f_scan_sexa(pelem.get('step').strip())
                     value=INDI.f_scan_sexa(text_value)
                     new_prop.vp[pelem_name]=INumber(pelem_name, pelem_label, numformat,
                                                     minvalue, maxvalue, stepvalue, value, new_prop)
@@ -140,6 +141,7 @@ class BaseDevice:
         if self.mediator: self.mediator.new_property(new_prop)
         return True
     def set_value(self, elem):
+        #if self.logger: self.logger.warn('set_value: '+elem.tag+ ':'+','.join(str(elem.items())) + ':'+''.join(elem.itertext())+'.')
         device_name, prop_name = elem.get('device'), elem.get('name')
         if prop_name=='':
             if self.logger: self.logger.error('Empty property name'+elem)
@@ -178,12 +180,15 @@ class BaseDevice:
                 elif prop.type==INDI.INDI_PROPERTY_TYPE.INDI_TEXT:
                     elem.text=text_value
                 elif prop.type==INDI.INDI_PROPERTY_TYPE.INDI_NUMBER:
-                    minvalue=INDI.f_scan_sexa(pelem.get('min'))
-                    maxvalue=INDI.f_scan_sexa(pelem.get('max'))
-                    value=INDI.f_scan_sexa(text_value)
-                    if minvalue: elem.min=minvalue
-                    if maxvalue: elem.max=maxvalue
-                    if value: elem.value=value
+                    minvalue, maxvalue= None, None
+                    if pelem.get('min'):
+                        minvalue=INDI.f_scan_sexa(pelem.get('min').strip())
+                    if pelem.get('max'):
+                        maxvalue=INDI.f_scan_sexa(pelem.get('max').strip())
+                    value=INDI.f_scan_sexa(text_value.strip())
+                    if minvalue is not None: elem.min=minvalue
+                    if maxvalue is not None: elem.max=maxvalue
+                    if value is not None: elem.value=value
                 elif prop.type==INDI.INDI_PROPERTY_TYPE.INDI_BLOB:
                     blobformat=pelem.get('format')
                     size=pelem.get('size')
@@ -194,7 +199,7 @@ class BaseDevice:
                             if self.logger: self.logger.warn('Can not parse blob size for '+elem_name+' in '+prop_name)
                             continue
                         if blobsize==0:
-                            if self.mediator: self.mediator.new_BLOB(elem)
+                            if self.mediator: self.mediator.new_blob(elem)
                         elem.size=blobsize
                         elem.format=blobformat
                         try:

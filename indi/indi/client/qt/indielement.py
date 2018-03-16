@@ -1,3 +1,20 @@
+# Copyright 2018 geehalel@gmail.com
+#
+# This file is part of npindi.
+#
+#    npindi is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    npindi is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with npindi.  If not, see <http://www.gnu.org/licenses/>.
+
 from PyQt5.QtCore import Qt, QObject, QFile, QIODevice
 from PyQt5.QtWidgets import QSizePolicy, QLabel, QLineEdit, QDoubleSpinBox, QPushButton, QHBoxLayout, QSpacerItem, QCheckBox, QButtonGroup, QSlider, QFileDialog
 from PyQt5.QtGui import QFont, QIcon
@@ -18,6 +35,7 @@ class INDI_E(QObject):
         self.push_w = None
         self.check_w = None
         self.browse_w = None
+        self.led_w = None
         self.tp = None
         self.np = None
         self.sp = None
@@ -38,6 +56,7 @@ class INDI_E(QObject):
         del(self.push_w)
         del(self.check_w)
         del(self.browse_w)
+        del(self.led_w)
         del(self.EHBox)
     def getLabel(self):
         return self.label
@@ -73,7 +92,7 @@ class INDI_E(QObject):
             self.check_w.show()
             if sw.svp.p == INDI.IPerm.IP_RO:
                 self.check_w.setEnabled(sw.s == INDI.ISState.ISS_ON)
-    def builMenuItem(self, sw):
+    def buildMenuItem(self, sw):
         self.buildSwitch(None, sw)
     def buildText(self, itp):
         self.name = itp.name
@@ -118,6 +137,18 @@ class INDI_E(QObject):
                 self.setupElementScale(ELEMENT_FULL_WIDTH)
             else:
                 self.setupElementWrite(ELEMENT_FULL_WIDTH)
+        self.guiProp.addLayout(self.EHBox)
+    def buildLight(self, ilp):
+        self.name = ilp.name
+        self.label = ilp.label
+        if not self.label:
+            self.label = self.name
+        self.led_w = QLed(self.guiProp.getGroup().getContainer())
+        self.led_w.setMaximumSize(16, 16)
+        self.lp = ilp
+        self.syncLight()
+        self.EHBox.addWidget(self.led_w)
+        self.setupElementLabel()
         self.guiProp.addLayout(self.EHBox)
     def buildBLOB(self, ibp):
         self.name = ibp.name
@@ -173,6 +204,7 @@ class INDI_E(QObject):
     def syncNumber(self):
         if self.np is None or self.read_w is None:
             return
+        #QLoggingCategory.qCDebug(QLoggingCategory.NPINDI,'syncNumber '+self.np.format +':'+str(self.np.value))
         self.text = INDI.numberFormat(self.np.format, self.np.value)
         self.read_w.setText(self.text)
         if self.spin_w:
@@ -180,17 +212,28 @@ class INDI_E(QObject):
                 self.setMin()
             if self.np.max != self.spin_w.maximum():
                 self.setMax()
+    def syncLight(self):
+        if self.lp is None: return
+        if self.lp.s == INDI.IPState.IPS_IDLE:
+            self.led_w.setColor('gray')
+        elif self.lp.s == INDI.IPState.IPS_OK:
+            self.led_w.setColor('green')
+        elif self.lp.s == INDI.IPState.IPS_BUSY:
+            self.led_w.setColor('orange')
+        elif self.lp.s == INDI.IPState.IPS_ALERT:
+            self.led_w.setColor('red')
     def updateTP(self):
         if self.tp is None: return
         self.tp.text = self.write_w.text()
     def updateNP(self):
         if self.np is None: return
         if self.write_w is not None:
-            if not self.write_w.text():
+            if self.write_w.text() is None:
                 return
-            #QLoggingCategory.qCDebug(QLoggingCategory.NPINDI,'updateNP '+self.write_w.text().replace(',','.'))
+            QLoggingCategory.qCDebug(QLoggingCategory.NPINDI,'updateNP '+self.write_w.text().replace(',','.').strip())
             try:
                 self.np.value = INDI.f_scan_sexa(self.write_w.text().replace(',','.').strip())
+                #QLoggingCategory.qCDebug(QLoggingCategory.NPINDI,'updateNP '+str(self.np.value))
             except:
                 pass
             return
@@ -235,6 +278,7 @@ class INDI_E(QObject):
     def setupBrowseButton(self):
         self.browse_w = QPushButton(self.guiProp.getGroup().getContainer())
         self.browse_w.setIcon(QIcon.fromTheme('document-open'))
+        self.browse_w.setText('Browse')
         self.browse_w.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
         self.browse_w.setMinimumWidth(MIN_SET_WIDTH)
         self.browse_w.setMaximumWidth(MAX_SET_WIDTH)
@@ -242,30 +286,30 @@ class INDI_E(QObject):
         self.browse_w.clicked.connect(self.browseBlob)
     @QtCore.pyqtSlot(float)
     def spinChanged(self, value):
-        spin_value = (value - self.np.min) // self.np.step
+        spin_value = (value - self.np.min) / self.np.step
         self.spin_w.setValue(spin_value)
     @QtCore.pyqtSlot(int)
     def sliderChanged(self, value):
-        slider_value = (value - self.np.min) // self.np.step
+        slider_value = (value - self.np.min) / self.np.step
         self.slider_w.setValue(slider_value)
     def setMin(self):
         if self.spin_w:
             self.spin_w.setMinimum(self.np.min)
             self.spin_w.setValue(self.np.value)
         if self.slider_w:
-            self.slider_w.setMaximum((self.np.max-self.np.min)//self.np.step)
+            self.slider_w.setMaximum((self.np.max-self.np.min)/self.np.step)
             self.slider_w.setMinimum(0)
             self.slider_w.setPageStep(1)
-            self.slider_w.setValue((self.np.value-self.np.min)//self.np.step)
+            self.slider_w.setValue((self.np.value-self.np.min)/self.np.step)
     def setMax(self):
         if self.spin_w:
             self.spin_w.setMaximum(self.np.max)
             self.spin_w.setValue(self.np.value)
         if self.slider_w:
-            self.slider_w.setMaximum((self.np.max-self.np.min)//self.np.step)
+            self.slider_w.setMaximum((self.np.max-self.np.min)/self.np.step)
             self.slider_w.setMinimum(0)
             self.slider_w.setPageStep(1)
-            self.slider_w.setValue((self.np.value-self.np.min)//self.np.step)
+            self.slider_w.setValue((self.np.value-self.np.min)/self.np.step)
     def setupElementRead(self, length):
         self.read_w = QLineEdit(self.guiProp.getGroup().getContainer())
         self.read_w.setMinimumWidth(length)
@@ -285,9 +329,7 @@ class INDI_E(QObject):
         self.EHBox.addWidget(self.write_w)
     @QtCore.pyqtSlot()
     def browseBlob(self):
-        QLoggingCategory.qCWarning(QLoggingCategory.NPINDI, 'browseBlob')
-        print('browseBlob !')
-        currentURL = QFileDialog.getOpenFileUrl(parent=self.guiProp.getGroup().getContainer())
+        currentURL, _ = QFileDialog.getOpenFileUrl()
         if not currentURL:
             return
         if currentURL.isValid():

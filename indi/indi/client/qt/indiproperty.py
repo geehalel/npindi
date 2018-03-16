@@ -1,3 +1,20 @@
+# Copyright 2018 geehalel@gmail.com
+#
+# This file is part of npindi.
+#
+#    npindi is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    npindi is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with npindi.  If not, see <http://www.gnu.org/licenses/>.
+
 from PyQt5.QtCore import QObject
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QAbstractButton, QSizePolicy, QCheckBox, QPushButton, QSpacerItem, QVBoxLayout, QHBoxLayout, QButtonGroup, QComboBox, QLabel, QFrame
@@ -71,7 +88,7 @@ class INDI_P(QObject):
         elif ptype == INDI.INDI_PROPERTY_TYPE.INDI_LIGHT:
             self.buildLightGUI()
         elif ptype == INDI.INDI_PROPERTY_TYPE.INDI_SWITCH:
-            if self.dataProp.r == INDI.ISRule.ISR_1OFMANY:
+            if self.dataProp.r == INDI.ISRule.ISR_NOFMANY:
                 self.guiType = PGui.PG_RADIO
             elif len(self.dataProp.vp) > 4:
                 self.guiType = PGui.PG_MENU
@@ -120,7 +137,15 @@ class INDI_P(QObject):
             return
         self.setupSetButton('Set')
     def buildLightGUI(self):
-        pass
+        lvp = self.dataProp.vp
+        if lvp is None:
+            return
+        for ilight in lvp.values():
+            lp = INDI_E(self, self.dataProp)
+            lp.buildLight(ilight)
+            self.elementList.append(lp)
+        horSpacer = QSpacerItem(20, 20, QSizePolicy.Expanding, QSizePolicy.Minimum)
+        self.PHBox.addItem(horSpacer)
     def buildSwitchGUI(self):
         svp = self.dataProp.vp
         if svp is None:
@@ -161,14 +186,14 @@ class INDI_P(QObject):
             lp.buildMenuItem(sp)
             oneOption = lp.getLabel()
             menuOptions.append(oneOption)
-            elementList.append(lp)
+            self.elementList.append(lp)
         self.menuC.addItems(menuOptions)
         self.menuC.setCurrentIndex(onItem)
         horSpacer = QSpacerItem(20, 20, QSizePolicy.Expanding, QSizePolicy.Minimum)
         self.PHBox.addWidget(self.menuC)
         self.PHBox.addItem(horSpacer)
     def updateMenuGUI(self):
-        currentIndex = IUFindOnSwitchIndex(self.dataProp)
+        currentIndex = INDI.IUFindOnSwitchIndex(self.dataProp)
         self.menuC.setCurrentIndex(currentIndex)
     def buildBLOBGUI(self):
         bvp = self.dataProp.vp
@@ -186,7 +211,7 @@ class INDI_P(QObject):
         self.enableBLOBC.setToolTip('Enable binary data transfer from this property to the application and vice versa.')
         self.PHBox.addWidget(self.enableBLOBC)
         self.enableBLOBC.stateChanged.connect(self.setBLOBOption)
-        if self.dataProp.getPermission() == INDI.IPerm.IP_RO:
+        if self.dataProp.getPermission() != INDI.IPerm.IP_RO:
             self.setupSetButton('Upload')
     @QtCore.pyqtSlot(int)
     def setBLOBOption(self, state):

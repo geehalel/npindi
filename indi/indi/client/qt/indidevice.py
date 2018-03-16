@@ -1,3 +1,20 @@
+# Copyright 2018 geehalel@gmail.com
+#
+# This file is part of npindi.
+#
+#    npindi is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    npindi is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with npindi.  If not, see <http://www.gnu.org/licenses/>.
+
 from PyQt5 import QtCore, Qt
 from PyQt5.QtWidgets import QTextEdit, QTabWidget, QSplitter, QDialog
 from indi.indibase.basedevice import BaseDevice
@@ -112,10 +129,34 @@ class INDI_D(QDialog):
         return True
     @QtCore.pyqtSlot(IVectorProperty)
     def updateLightGUI(self, lvp):
-        pass
+        guiProp = None
+        propName = lvp.name
+        if lvp.device.getDeviceName() != self.dv.getDeviceName():
+            return False
+        for pg in self.groupsList:
+            guiProp = pg.getProperty(propName)
+            if guiProp is not None:
+                break
+        if guiProp  is None:
+            return False
+        guiProp.updateStateLED()
+        for lp in guiProp.getElements():
+            lp.syncLight()
+        return True
     @QtCore.pyqtSlot(IVectorProperty)
     def updateBLOBGUI(self, bp):
-        pass
+        guiProp = None
+        propName = bp.bvp.name
+        if bp.bvp.device.getDeviceName() != self.dv.getDeviceName():
+            return False
+        for pg in self.groupsList:
+            guiProp = pg.getProperty(propName)
+            if guiProp is not None:
+                break
+        if guiProp  is None:
+            return False
+        guiProp.updateStateLED()
+        return True
     @QtCore.pyqtSlot(BaseDevice, int)
     def updateMessageLog(self, idv, messageID):
         if idv != self.dv: return
@@ -126,8 +167,15 @@ class INDI_D(QDialog):
         elif message[21:23] == '[W':
             formatted = '<span style="color:orange">{!s}</span>'.format(message)
         elif message[21:23] == '[I':
-            QLoggingCategory.qCDebug(QLoggingCategory.NPINDI, idv.getDeviceName()+message[21:])
-            return
+            #QLoggingCategory.qCDebug(QLoggingCategory.NPINDI, idv.getDeviceName()+message[21:])
+            #return
+            formatted = '<span style="color:black">{!s}</span>'.format(message)
+        elif message[21:23] == '[D':
+            formatted = '<span style="color:blue">{!s}</span>'.format(message)
+        elif message[21:23] == '[C':
+            formatted = '<span style="color:blueviolet">{!s}</span>'.format(message)
+        else:
+            formatted = '<span style="color:green">{!s}</span>'.format(message)
         self.msgST_w.ensureCursorVisible()
         self.msgST_w.insertHtml(formatted)
         self.msgST_w.insertPlainText('\n')

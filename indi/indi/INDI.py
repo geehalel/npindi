@@ -89,7 +89,7 @@ class INDI:
             return float(m.group(1))
         elif m.lastindex == 2:
             return float(m.group(1)) + (float(m.group(2))/60.0)
-        elif m.lastindex == 2:
+        elif m.lastindex == 3:
             return float(m.group(1)) + (float(m.group(2))/60.0) + (float(m.group(3))/3600.0)
         else:
             return None
@@ -114,7 +114,7 @@ class INDI:
             m = f / (fracbase // 60)
             s = f % (fracbase // 60)
             out += ':%02d:%02d' % (m ,s)
-        elif fracabse == 36000:
+        elif fracbase == 36000:
             m = f / (fracbase // 60)
             s = f % (fracbase // 60)
             out += ':%02d:%02d.%1d' % (m ,s // 10, s % 10)
