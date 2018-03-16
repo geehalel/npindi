@@ -3,6 +3,7 @@ from PyQt5.QtWidgets import QTextEdit, QTabWidget, QSplitter, QDialog
 from indi.indibase.basedevice import BaseDevice
 from indi.client.qt.indicommon import *
 from indi.client.qt.indigroup import INDI_G
+from indi.INDI import *
 
 class INDI_D(QDialog):
     def __init__(self, in_manager, in_idv, in_cm):
@@ -18,6 +19,11 @@ class INDI_D(QDialog):
         self.deviceVBox.addWidget(self.groupContainer)
         self.deviceVBox.addWidget(self.msgST_w)
         self.groupsList = list()
+    def removeWidgets(self):
+        self.groupContainer.deleteLater()
+        self.msgST_w.deleteLater()
+        self.deviceVBox.deleteLater()
+        self.deleteLater()
     def getDeviceBox(self):
         return self.deviceVBox
     def getClientManager(self):
@@ -26,6 +32,7 @@ class INDI_D(QDialog):
         return self.dv
     def getGroups(self):
         return self.groupsList
+    @QtCore.pyqtSlot(IVectorProperty)
     def buildProperty(self, prop):
         groupName = prop.getGroupName()
         if prop.getDeviceName() != self.dv.getDeviceName():
@@ -36,6 +43,7 @@ class INDI_D(QDialog):
             self.groupsList.append(pg)
             self.groupContainer.addTab(pg.getScrollArea(), groupName)
         return pg.addProperty(prop)
+    @QtCore.pyqtSlot(IVectorProperty)
     def removeProperty(self, prop):
         if prop is None: return False
         groupName = prop.getGroupName()
@@ -47,9 +55,11 @@ class INDI_D(QDialog):
         removeResult = pg.removeProperty(prop.getName())
         if pg.size() == 0 and removeResult:
             self.groupContainer.removeTab(self.groupsList.index(pg))
+            pg.removeWidgets()
             self.groupsList.remove(pg)
             del(pg)
         return removeResult
+    @QtCore.pyqtSlot(IVectorProperty)
     def updateSwitchGUI(self, svp):
         guiProp = None
         propName = svp.name
@@ -68,6 +78,7 @@ class INDI_D(QDialog):
             for lp in guiProp.getElements():
                 lp.syncSwitch()
         return True
+    @QtCore.pyqtSlot(IVectorProperty)
     def updateTextGUI(self, tvp):
         guiProp = None
         propName = tvp.name
@@ -83,6 +94,7 @@ class INDI_D(QDialog):
         for lp in guiProp.getElements():
             lp.syncText()
         return True
+    @QtCore.pyqtSlot(IVectorProperty)
     def updateNumberGUI(self, nvp):
         guiProp = None
         propName = nvp.name
@@ -98,8 +110,10 @@ class INDI_D(QDialog):
         for lp in guiProp.getElements():
             lp.syncNumber()
         return True
+    @QtCore.pyqtSlot(IVectorProperty)
     def updateLightGUI(self, lvp):
         pass
+    @QtCore.pyqtSlot(IVectorProperty)
     def updateBLOBGUI(self, bp):
         pass
     @QtCore.pyqtSlot(BaseDevice, int)

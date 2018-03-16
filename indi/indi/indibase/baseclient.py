@@ -168,18 +168,22 @@ class BaseClient:
     def finish_blob(self):
         self.send_string("</newBLOBVector>\n")
     def send_one_blob(self, blob_name, blob_format, blobdata):
+        if not blobdata:
+            blobdata = b''
         b64blob=base64.encodebytes(blobdata)
+        if not blob_format:
+            blob_format = ''
         self.send_string("  <oneBLOB\n")
         self.send_string("    name='"+blob_name+"'\n")
-        self.send_string("    size='"+len(blobdata)+"'\n")
-        self.send_string("    enclen='"+len(b64blob)+"'\n")
+        self.send_string("    size='"+str(len(blobdata))+"'\n")
+        self.send_string("    enclen='"+str(len(b64blob))+"'\n")
         self.send_string("    format='"+blob_format+"'>\n")
         if self.client_socket:
             self.client_socket.sendall(b64blob)
         self.send_string("  </oneBLOB>\n")
     def send_blob(self, blob):
         self.start_blob(blob.device.name, blob.name, datetime.datetime.now().isoformat())
-        for b in blob.bvp:
+        for b in blob.vp.values():
             self.send_one_blob(b.name, b.format, b.blob)
         self.finish_blob()
     def find_blob_mode(self, device, prop):
@@ -222,7 +226,9 @@ class BaseClient:
         if not bmode:
             self.blob_modes[device_name+prop_name]=blob_handling
         else:
-            if blob_handling != self.blob_modes[device_name+prop_name]:
+            if device_name+prop_name in self.blob_modes and blob_handling != self.blob_modes[device_name+prop_name]:
+                self.blob_modes[device_name+prop_name]=blob_handling
+            elif not device_name+prop_name in self.blob_modes:
                 self.blob_modes[device_name+prop_name]=blob_handling
             else:
                 return

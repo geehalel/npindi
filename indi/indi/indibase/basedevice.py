@@ -158,6 +158,9 @@ class BaseDevice:
         timestamp=elem.get('timestamp')
         if timestamp:
             prop.timestamp=timestamp
+        perm=elem.get('perm')
+        if prop.type != INDI.INDI_PROPERTY_TYPE.INDI_LIGHT and perm:
+            prop.p=INDI.crackIndi(perm, INDI.IPerm)
         for pelem in elem.iter(BaseDevice._elem_tags[prop.type]):
             elem_name=pelem.get('name')
             if elem_name:

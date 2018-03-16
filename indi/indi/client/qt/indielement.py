@@ -1,6 +1,6 @@
-from PyQt5.QtCore import Qt, QObject
-from PyQt5.QtWidgets import QSizePolicy, QLabel, QLineEdit, QDoubleSpinBox, QPushButton, QHBoxLayout, QSpacerItem, QCheckBox, QButtonGroup, QSlider
-from PyQt5.QtGui import QFont
+from PyQt5.QtCore import Qt, QObject, QFile, QIODevice
+from PyQt5.QtWidgets import QSizePolicy, QLabel, QLineEdit, QDoubleSpinBox, QPushButton, QHBoxLayout, QSpacerItem, QCheckBox, QButtonGroup, QSlider, QFileDialog
+from PyQt5.QtGui import QFont, QIcon
 from indi.client.qt.indicommon import *
 from indi.INDI import *
 class INDI_E(QObject):
@@ -17,12 +17,36 @@ class INDI_E(QObject):
         self.slider_w = None
         self.push_w = None
         self.check_w = None
+        self.browse_w = None
         self.tp = None
         self.np = None
+        self.sp = None
+        self.bp = None
+        self.blobDirty = False
+    def removeWidgets(self):
+        while self.EHBox.count() > 0:
+            item = self.EHBox.takeAt(0)
+            if not item: continue
+            widget = item.widget()
+            if widget:
+                widget.deleteLater()
+        self.EHBox.deleteLater()
+        del(self.read_w)
+        del(self.write_w)
+        del(self.spin_w)
+        del(self.slider_w)
+        del(self.push_w)
+        del(self.check_w)
+        del(self.browse_w)
+        del(self.EHBox)
     def getLabel(self):
         return self.label
     def getName(self):
         return self.name
+    def getBLOBDirty(self):
+        return self.blobDirty
+    def setBLOBDirty(self, isDirty):
+        self.blobDirty = isDirty
     def buildSwitch(self, groupB, sw):
         self.name = sw.name
         self.label = sw.label
@@ -95,6 +119,25 @@ class INDI_E(QObject):
             else:
                 self.setupElementWrite(ELEMENT_FULL_WIDTH)
         self.guiProp.addLayout(self.EHBox)
+    def buildBLOB(self, ibp):
+        self.name = ibp.name
+        self.label = ibp.label
+        if not self.label:
+            self.label = self.name
+        self.setupElementLabel()
+        self.text = 'INDI DATA STREAM'
+        self.bp = ibp
+        perm = self.dataProp.getPermission()
+        if perm == INDI.IPerm.IP_RW:
+            self.setupElementRead(ELEMENT_READ_WIDTH)
+            self.setupElementWrite(ELEMENT_WRITE_WIDTH)
+            self.setupBrowseButton()
+        elif perm == INDI.IPerm.IP_RO:
+            self.setupElementRead(ELEMENT_FULL_WIDTH)
+        elif perm == INDI.IPerm.IP_WO:
+            self.setupElementWrite(ELEMENT_FULL_WIDTH)
+            self.setupBrowseButton()
+        self.guiProp.addLayout(self.EHBox)
     def syncSwitch(self):
         pgtype = self.guiProp.getGUIType()
         if pgtype == PGui.PG_BUTTONS:
@@ -150,6 +193,7 @@ class INDI_E(QObject):
                 self.np.value = INDI.f_scan_sexa(self.write_w.text().replace(',','.').strip())
             except:
                 pass
+            return
         if self.spin_w is not None:
             self.np.value = self.spin_w.value()
     def setupElementLabel(self):
@@ -188,11 +232,19 @@ class INDI_E(QObject):
         self.slider_w.setMinimumWidth(int(length*0.55))
         self.EHBox.addWidget(self.slider_w)
         self.EHBox.addWidget(self.spin_w)
+    def setupBrowseButton(self):
+        self.browse_w = QPushButton(self.guiProp.getGroup().getContainer())
+        self.browse_w.setIcon(QIcon.fromTheme('document-open'))
+        self.browse_w.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
+        self.browse_w.setMinimumWidth(MIN_SET_WIDTH)
+        self.browse_w.setMaximumWidth(MAX_SET_WIDTH)
+        self.EHBox.addWidget(self.browse_w)
+        self.browse_w.clicked.connect(self.browseBlob)
     @QtCore.pyqtSlot(float)
     def spinChanged(self, value):
         spin_value = (value - self.np.min) // self.np.step
         self.spin_w.setValue(spin_value)
-    @QtCore.pyqtSlot(float)
+    @QtCore.pyqtSlot(int)
     def sliderChanged(self, value):
         slider_value = (value - self.np.min) // self.np.step
         self.slider_w.setValue(slider_value)
@@ -231,6 +283,25 @@ class INDI_E(QObject):
         self.write_w.setText(self.text)
         self.write_w.returnPressed.connect(self.guiProp.sendText)
         self.EHBox.addWidget(self.write_w)
+    @QtCore.pyqtSlot()
+    def browseBlob(self):
+        QLoggingCategory.qCWarning(QLoggingCategory.NPINDI, 'browseBlob')
+        print('browseBlob !')
+        currentURL = QFileDialog.getOpenFileUrl(parent=self.guiProp.getGroup().getContainer())
+        if not currentURL:
+            return
+        if currentURL.isValid():
+            self.write_w.setText(currentURL.toLocalFile())
+        fp = QFile()
+        fp.setFileName(currentURL.toLocalFile())
+        filename = currentURL.toLocalFile()
+        self.bp.format = '.' + filename.split('.')[-1]
+        if not fp.open(QIODevice.ReadOnly):
+            QLoggingCategory.qCError(QLoggingCategory.NPINDI, 'Can not open file %s for reading.' % filename)
+            return
+        self.bp.bloblen = self.bp.size = fp.size()
+        self.bp.blob = fp.readAll()
+        self.blobDirty = True
     def getWriteField(self):
         if self.write_w:
             return self.write_w.text()

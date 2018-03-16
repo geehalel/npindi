@@ -6,6 +6,7 @@ from indi.indibase.baseclient import BaseClient
 
 import xml.etree.ElementTree
 import logging
+import base64
 class BaseClientQt(QtCore.QObject, BaseClient):
     def __init__(self, parent=None, host='localhost', port=7624, mediator=None, logger=None):
         QtCore.QObject.__init__(self, parent)
@@ -68,7 +69,7 @@ class BaseClientQt(QtCore.QObject, BaseClient):
                 #print('Parsed a', elem.tag,'element')
                 if not self.dispatch_command(elem):
                     self.logger.error('Parser: dispatch_command failed for element '+ elem.tag)
-    @QtCore.pyqtSlot(QAbstractSocket)
+    @QtCore.pyqtSlot(QAbstractSocket.SocketError)
     def processSocketError(self, SocketError):
         if not self.is_connected:
             return
@@ -78,3 +79,17 @@ class BaseClientQt(QtCore.QObject, BaseClient):
     def send_string(self, s):
         if self.client_socket:
             self.client_socket.write(s.encode(encoding='ascii'))
+    def send_one_blob(self, blob_name, blob_format, blobdata):
+        if  not blobdata:
+            blobdata = b''
+        b64blob=base64.encodebytes(blobdata)
+        if not blob_format:
+            blob_format = ''
+        self.send_string("  <oneBLOB\n")
+        self.send_string("    name='"+blob_name+"'\n")
+        self.send_string("    size='"+str(len(blobdata))+"'\n")
+        self.send_string("    enclen='"+str(len(b64blob))+"'\n")
+        self.send_string("    format='"+blob_format+"'>\n")
+        if self.client_socket:
+            self.client_socket.write(b64blob)
+        self.send_string("  </oneBLOB>\n")

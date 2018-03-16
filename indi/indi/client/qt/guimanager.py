@@ -102,6 +102,7 @@ class GUIManager(QWidget):
             if self.mainTabWidget.tabText(i)[1:] == deviceName:
                 self.mainTabWidget.removeTab(i)
                 break
+        dp.removeWidgets()
         self.guidevices.remove(dp)
         del(dp)
         if len(self.guidevices) == 0:

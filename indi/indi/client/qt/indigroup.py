@@ -8,6 +8,7 @@ class INDI_G:
         self.name = inName if inName else 'Unknown'
         self.propertyContainer = QFrame(idv)
         self.propertyLayout = QVBoxLayout(self.propertyContainer)
+        self.propertyLayout.setContentsMargins(20, 20, 20, 20)
         self.VerticalSpacer = QSpacerItem(20, 20, Qt.QSizePolicy.Minimum, Qt.QSizePolicy.Expanding)
         self.propertyLayout.addItem(self.VerticalSpacer)
         self.propertyLayout.setSizeConstraint(QLayout.SetMinAndMaxSize)
@@ -15,6 +16,9 @@ class INDI_G:
         self.scrollArea.setWidget(self.propertyContainer)
         self.scrollArea.setMinimumSize(idv.size())
         self.propList = list()
+    def removeWidgets(self):        
+        self.scrollArea.deleteLater()
+        self.propertyLayout.deleteLater()
     def getContainer(self):
         return self.propertyContainer
     def getScrollArea(self):
@@ -43,6 +47,7 @@ class INDI_G:
             if pp.getName() == propName:
                 self.propList.remove(pp)
                 self.propertyLayout.removeItem(pp.getContainer())
+                pp.removeWidgets()
                 del(pp)
                 return True
         return False

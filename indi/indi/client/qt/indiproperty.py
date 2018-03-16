@@ -1,6 +1,7 @@
 from PyQt5.QtCore import QObject
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QAbstractButton, QSizePolicy, QCheckBox, QPushButton, QSpacerItem, QVBoxLayout, QHBoxLayout, QButtonGroup, QComboBox, QLabel, QFrame
+from PyQt5.QtGui import QIcon
 
 from indi.client.qt.indicommon import *
 from indi.INDI import *
@@ -19,6 +20,25 @@ class INDI_P(QObject):
         self.elementList = list()
         self.initGUI()
         self.updateStateLED()
+    def removeWidgets(self):
+        for e in self.elementList:
+            e.removeWidgets()
+        while self.PVBox.count() > 0:
+            item = self.PVBox.takeAt(0)
+            if not item: continue
+            widget = item.widget()
+            if widget:
+                widget.deleteLater()
+        self.PVBox.deleteLater()
+        del(self.PVBox)
+        while self.PHBox.count() > 0:
+            item = self.PHBox.takeAt(0)
+            if not item: continue
+            widget = item.widget()
+            if widget:
+                widget.deleteLater()
+        self.PHBox.deleteLater()
+        del(self.PHBox)
     def getGUIType(self):
         return self.guiType
     def getGroup(self):
@@ -151,7 +171,29 @@ class INDI_P(QObject):
         currentIndex = IUFindOnSwitchIndex(self.dataProp)
         self.menuC.setCurrentIndex(currentIndex)
     def buildBLOBGUI(self):
-        pass
+        bvp = self.dataProp.vp
+        if bvp is None:
+            return
+        for iblob in bvp.values():
+            lp = INDI_E(self, self.dataProp)
+            lp.buildBLOB(iblob)
+            self.elementList.append(lp)
+        horSpacer = QSpacerItem(20, 20, QSizePolicy.Expanding, QSizePolicy.Minimum)
+        self.PHBox.addItem(horSpacer)
+        self.enableBLOBC = QCheckBox()
+        self.enableBLOBC.setIcon(QIcon.fromTheme('modem'))
+        self.enableBLOBC.setChecked(True)
+        self.enableBLOBC.setToolTip('Enable binary data transfer from this property to the application and vice versa.')
+        self.PHBox.addWidget(self.enableBLOBC)
+        self.enableBLOBC.stateChanged.connect(self.setBLOBOption)
+        if self.dataProp.getPermission() == INDI.IPerm.IP_RO:
+            self.setupSetButton('Upload')
+    @QtCore.pyqtSlot(int)
+    def setBLOBOption(self, state):
+        if state == Qt.Checked:
+            self.pg.getDevice().getClientManager().set_blob_mode(INDI.BLOBHandling.B_ALSO, self.dataProp.getDeviceName(), self.dataProp.getName())
+        else:
+            self.pg.getDevice().getClientManager().set_blob_mode(INDI.BLOBHandling.B_NEVER, self.dataProp.getDeviceName(), self.dataProp.getName())
     @QtCore.pyqtSlot(QAbstractButton)
     def newSwitch(self, param):
         svp = self.dataProp.vp
@@ -238,7 +280,10 @@ class INDI_P(QObject):
         self.updateStateLED()
     @QtCore.pyqtSlot()
     def sendBlob(self):
-        pass
+        if self.dataProp is None:
+            return
+        self.dataProp.s = INDI.IPState.IPS_BUSY
+        self.pg.getDevice().getClientManager().send_blob(self.dataProp)
     def addWidget(self, w):
         self.PHBox.addWidget(w)
     def addLayout(self, layout):
