@@ -204,7 +204,7 @@ class INDI_E(QObject):
     def syncNumber(self):
         if self.np is None or self.read_w is None:
             return
-        #QLoggingCategory.qCDebug(QLoggingCategory.NPINDI,'syncNumber '+self.np.format +':'+str(self.np.value))
+        QLoggingCategory.qCDebug(QLoggingCategory.NPINDI,'syncNumber '+self.np.format +':'+str(self.np.value)+' '+str(self.np.min)+' '+str(self.np.max))
         self.text = INDI.numberFormat(self.np.format, self.np.value)
         self.read_w.setText(self.text)
         if self.spin_w:
@@ -278,7 +278,8 @@ class INDI_E(QObject):
     def setupBrowseButton(self):
         self.browse_w = QPushButton(self.guiProp.getGroup().getContainer())
         self.browse_w.setIcon(QIcon.fromTheme('document-open'))
-        self.browse_w.setText('Browse')
+        if self.browse_w.icon() is None:
+            self.browse_w.setText('Browse')
         self.browse_w.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
         self.browse_w.setMinimumWidth(MIN_SET_WIDTH)
         self.browse_w.setMaximumWidth(MAX_SET_WIDTH)
@@ -329,7 +330,7 @@ class INDI_E(QObject):
         self.EHBox.addWidget(self.write_w)
     @QtCore.pyqtSlot()
     def browseBlob(self):
-        currentURL, _ = QFileDialog.getOpenFileUrl()
+        currentURL, _ = QFileDialog.getOpenFileUrl(self.guiProp.getGroup().getDevice().guiManager)
         if not currentURL:
             return
         if currentURL.isValid():
@@ -339,7 +340,7 @@ class INDI_E(QObject):
         filename = currentURL.toLocalFile()
         self.bp.format = '.' + filename.split('.')[-1]
         if not fp.open(QIODevice.ReadOnly):
-            QLoggingCategory.qCError(QLoggingCategory.NPINDI, 'Can not open file %s for reading.' % filename)
+            QLoggingCategory.qCWarning(QLoggingCategory.NPINDI, 'Can not open file %s for reading.' % filename)
             return
         self.bp.bloblen = self.bp.size = fp.size()
         self.bp.blob = fp.readAll()

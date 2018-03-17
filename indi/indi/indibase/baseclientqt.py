@@ -90,7 +90,7 @@ class BaseClientQt(QtCore.QObject, BaseClient):
     def processSocketError(self, SocketError):
         if not self.is_connected:
             return
-        self.logger.error('INDI Server {!s}/{/d} disconnected.'.format(self.host, self.port))
+        self.logger.error('INDI Server {!s}/{!d} disconnected.'.format(self.host, self.port))
         self.client_socket.close()
         self.mediator.server_disconnected(-1)
     def send_string(self, s):

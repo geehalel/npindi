@@ -219,6 +219,8 @@ class INDI_P(QObject):
             self.pg.getDevice().getClientManager().set_blob_mode(INDI.BLOBHandling.B_ALSO, self.dataProp.getDeviceName(), self.dataProp.getName())
         else:
             self.pg.getDevice().getClientManager().set_blob_mode(INDI.BLOBHandling.B_NEVER, self.dataProp.getDeviceName(), self.dataProp.getName())
+    @QtCore.pyqtSlot(int)
+    @QtCore.pyqtSlot(str)
     @QtCore.pyqtSlot(QAbstractButton)
     def newSwitch(self, param):
         svp = self.dataProp.vp
