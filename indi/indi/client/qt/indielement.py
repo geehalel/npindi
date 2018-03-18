@@ -131,7 +131,7 @@ class INDI_E(QObject):
             else:
                 self.setupElementWrite(ELEMENT_WRITE_WIDTH)
         elif perm == INDI.IPerm.IP_RO:
-            self.setupElementRead(ELEMENT_FULL_WIDTH)
+            self.setupElementRead(ELEMENT_READ_WIDTH)
         elif perm == INDI.IPerm.IP_WO:
             if scale:
                 self.setupElementScale(ELEMENT_FULL_WIDTH)
@@ -204,7 +204,7 @@ class INDI_E(QObject):
     def syncNumber(self):
         if self.np is None or self.read_w is None:
             return
-        QLoggingCategory.qCDebug(QLoggingCategory.NPINDI,'syncNumber '+self.np.format +':'+str(self.np.value)+' '+str(self.np.min)+' '+str(self.np.max))
+        #QLoggingCategory.qCDebug(QLoggingCategory.NPINDI,'syncNumber '+self.np.format +':'+str(self.np.value)+' '+str(self.np.min)+' '+str(self.np.max))
         self.text = INDI.numberFormat(self.np.format, self.np.value)
         self.read_w.setText(self.text)
         if self.spin_w:
@@ -230,7 +230,7 @@ class INDI_E(QObject):
         if self.write_w is not None:
             if self.write_w.text() is None:
                 return
-            QLoggingCategory.qCDebug(QLoggingCategory.NPINDI,'updateNP '+self.write_w.text().replace(',','.').strip())
+            #QLoggingCategory.qCDebug(QLoggingCategory.NPINDI,'updateNP '+self.write_w.text().replace(',','.').strip())
             try:
                 self.np.value = INDI.f_scan_sexa(self.write_w.text().replace(',','.').strip())
                 #QLoggingCategory.qCDebug(QLoggingCategory.NPINDI,'updateNP '+str(self.np.value))
@@ -257,7 +257,7 @@ class INDI_E(QObject):
         if self.np is None: return
         steps = (self.np.max -self.np.min) // self.np.step
         self.spin_w = QDoubleSpinBox(self.guiProp.getGroup().getContainer())
-        self.spin_w.setRange(self.np.min, self.np.min)
+        self.spin_w.setRange(self.np.min, self.np.max)
         self.spin_w.setSingleStep(self.np.step)
         self.spin_w.setValue(self.np.value)
         self.spin_w.setDecimals(3)
@@ -287,12 +287,13 @@ class INDI_E(QObject):
         self.browse_w.clicked.connect(self.browseBlob)
     @QtCore.pyqtSlot(float)
     def spinChanged(self, value):
-        spin_value = (value - self.np.min) / self.np.step
-        self.spin_w.setValue(spin_value)
+        slider_value = int((value - self.np.min) / self.np.step)
+        self.slider_w.setValue(slider_value)
     @QtCore.pyqtSlot(int)
     def sliderChanged(self, value):
-        slider_value = (value - self.np.min) / self.np.step
-        self.slider_w.setValue(slider_value)
+        if value is None: value = self.slider_w.sliderPosition()
+        spin_value = (value * self.np.step) + self.np.min
+        self.spin_w.setValue(spin_value)
     def setMin(self):
         if self.spin_w:
             self.spin_w.setMinimum(self.np.min)

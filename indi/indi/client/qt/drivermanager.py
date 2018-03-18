@@ -99,6 +99,8 @@ class DriverManager(QDialog):
         self.ui.localTreeWidget.itemClicked.connect(self.updateLocalTab)
         self.ui.clientTreeWidget.itemClicked.connect(self.updateClientTab)
         self.ui.localTreeWidget.expanded.connect(self.resizeDeviceColumn)
+        # Local server not implemented yet
+        self.ui.ConfTabWidget.setTabEnabled(0, False)
         #For testing purpose
         hostItem=DriverInfo('localhost')
         hostItem.setHostParameters('localhost', '7624')
@@ -112,6 +114,7 @@ class DriverManager(QDialog):
             'localhost')
         item.setText(self.HostColumns.HOST_PORT_COLUMN.value,
             '7624')
+        # end testing item
     def addINDIHost(self):
         hostConfDialog = QDialog()
         uiFile = os.path.dirname(inspect.getfile(inspect.currentframe()))

@@ -21,7 +21,7 @@ from PyQt5.QtGui import QCloseEvent, QHideEvent, QShowEvent, QIcon
 
 from indi.client.qt.deviceinfo import DeviceInfo
 from indi.client.qt.indidevice import INDI_D
-
+from indi.client.qt.indicommon import QLoggingCategory
 import time
 
 class GUIManager(QWidget):
@@ -45,7 +45,7 @@ class GUIManager(QWidget):
         self.clearB = QPushButton('Clear')
         self.closeB = QPushButton('Close')
         buttonLayout = QHBoxLayout()
-        #buttonLayout.InsertStretch(0, 0)
+        buttonLayout.insertStretch(0, 0)
         buttonLayout.addWidget(self.clearB, 0, QtCore.Qt.AlignRight)
         buttonLayout.addWidget(self.closeB, 0, QtCore.Qt.AlignRight)
         self.mainLayout.addLayout(buttonLayout)
@@ -64,7 +64,12 @@ class GUIManager(QWidget):
         return len(self.guidevices)
     @QtCore.pyqtSlot(QtCore.Qt.ApplicationState)
     def changeAlwaysOnTop(self, state):
-        pass
+        if self.isVisible():
+            if state == QtCore.Qt.ApplicationActive:
+                self.setWindowFlags(QtCore.Qt.Window | QtCore.Qt.WindowStaysOnTopHint)
+            else:
+                self.setWindowFlags(self.windowFlags & ~QtCore.Qt.WindowStaysOnTopHint)
+            self.show()
     def closeEvent(self, event):
         pass
     def hideEvent(self, event):
@@ -85,8 +90,10 @@ class GUIManager(QWidget):
             if gdv.getBaseDevice().getDeviceName() == deviceName:
                 return gdv
         return None
+    @QtCore.pyqtSlot()
     def clearLog(self):
-        dev = self.findGUIDevice(self.mainTabWidget.tabText(self.mainTabWidget.currentIndex())[1:])
+        dev = self.findGUIDevice(self.mainTabWidget.tabText(self.mainTabWidget.currentIndex()).replace('&',''))
+        #QLoggingCategory.qCDebug(QLoggingCategory.NPINDI, 'clearLog for dev '+str(dev))
         if dev:
             dev.clearMessageLog()
     def addClient(self, cm):
@@ -98,7 +105,7 @@ class GUIManager(QWidget):
         for gdv in self.guidevices:
             if gdv.getClientManager() == cm:
                 for i in range(self.mainTabWidget.count()):
-                    if self.mainTabWidget.tabText(i)[1:] == gdv.getBaseDevice().getDeviceName():
+                    if self.mainTabWidget.tabText(i).replace('&','') == gdv.getBaseDevice().getDeviceName():
                         self.mainTabWidget.removeTab(i)
                         break
                 self.guidevices.remove(gdv)
@@ -116,7 +123,7 @@ class GUIManager(QWidget):
         if self.mainTabWidget.count() != len(self.guidevices):
             time.sleep(0.1)
         for i in range(self.mainTabWidget.count()):
-            if self.mainTabWidget.tabText(i)[1:] == deviceName:
+            if self.mainTabWidget.tabText(i).replace('&','') == deviceName:
                 self.mainTabWidget.removeTab(i)
                 break
         dp.removeWidgets()
