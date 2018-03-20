@@ -57,6 +57,10 @@ class BaseClient:
             self.mediator=BaseMediator(self.logger)
         else:
             self.mediator=mediator
+    def getHost(self):
+        return self.host
+    def getPort(self):
+        return self.port
     def clear(self):
         for d in self.devices:
             del(self.devices[d])

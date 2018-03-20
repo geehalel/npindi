@@ -40,6 +40,7 @@ class ISD:
         propertyDefined = pyqtSignal(IVectorProperty)
         propertyDeleted = pyqtSignal(IVectorProperty)
         def __init__(self):
+            super().__init__()
             self.dType = DeviceFamily.KSTARS_CCD
             self.properties = list()
         def registerProperty(self, prop):
@@ -102,8 +103,21 @@ class ISD:
             self.clientManager = self.driverInfo.getClientManager()
             self.watchDogTimer = None
             self.BLOBFilename = ''
+            self.dType = DeviceFamily.KSTARS_UNKNOWN
+        def getType(self):
+            return self.dType
+        def getDriverInfo(self):
+            return self.driverInfo
+        def getDeviceInfo(self):
+            return self.deviceInfo
+        def getProperties(self):
+            return self.properties
+        def isConnected(self):
+            return self.connected
+        def getBaseDevice(self):
+            return self. baseDevice
         def getDeviceName(self):
-            return self.baseDevice.getName()
+            return self.baseDevice.getDeviceName()
         def getState(self, propName):
             return self.baseDevice.getPropertyState(propName)
         def getPermission(self, propName):
@@ -268,6 +282,7 @@ class ISD:
             pass
     class DeviceDecorator(GDInterface):
         def __init__(self, iPtr):
+            super().__init__()
             self.interfacePtr = iPtr
             iPtr.Connected.connect(self.Connected)
             iPtr.Disconnected.connect(self.Disconnected)

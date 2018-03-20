@@ -30,6 +30,7 @@ from indi.client.qt.indicommon import *
 from indi.client.qt.driverinfo import DriverInfo
 from indi.client.qt.clientmanager import ClientManager
 from indi.client.qt.guimanager import GUIManager
+from indi.client.qt.indilistener import INDIListener
 
 class DriverManagerUI(QFrame):
     def __init__(self, parent=None):
@@ -249,7 +250,7 @@ class DriverManager(QDialog):
         clientManager.connectionFailure.connect(self.processClientTermination)
         clientManager.setServer(dv.getHost().encode('latin-1', 'ignore'), port)
         GUIManager.Instance().addClient(clientManager)
-        #INDIListener::Instance()->addClient(clientManager);
+        INDIListener.Instance().addClient(clientManager)
         for i in range(INDI_MAX_TRIES):
             connectionToServer = clientManager.connectServer()
             if connectionToServer:
@@ -260,7 +261,7 @@ class DriverManager(QDialog):
             self.updateMenuActions()
         else:
             GUIManager.Instance().removeClient(clientManager)
-            #INDIListener::Instance()->removelient(clientManager);
+            INDIListener.Instance().removeClient(clientManager)
             msgBox=QMessageBox(self)
             msgBox.setAttribute(QtCore.Qt.WA_DeleteOnClose)
             msgBox.setStandardButtons(QMessageBox.Ok)
@@ -277,8 +278,8 @@ class DriverManager(QDialog):
         if clientManager is not None:
             clientManager.removeManagedDriver(dv)
             clientManager.disconnectServer()
-            GUIManager.Instance().removeClient(clientManager);
-            #INDIListener::Instance()->removelient(clientManager);
+            GUIManager.Instance().removeClient(clientManager)
+            INDIListener.Instance().removeClient(clientManager)
             self.clients.remove(clientManager)
             del(clientManager)
             self.updateMenuActions()

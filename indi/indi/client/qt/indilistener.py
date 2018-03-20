@@ -15,12 +15,15 @@
 #    You should have received a copy of the GNU General Public License
 #    along with npindi.  If not, see <http://www.gnu.org/licenses/>.
 
-from PytQt5.QtCore import QObject, pyqtSignal, pyqtSlot
+from PyQt5.QtCore import QObject, pyqtSignal, pyqtSlot
 
 from indi.INDI import *
-from indi.client.qt.clientmanager import ClientManager
+from indi.client.qt.clientmanager import *
 from indi.client.qt.deviceinfo import DeviceInfo
 from indi.client.qt.indistd import *
+
+from indi.client.qt.inditelescope import Telescope
+
 indi_std = {
             "CONNECTION",
             "DEVICE_PORT",
@@ -59,7 +62,7 @@ indi_std = {
             "FLAT_LIGHT_INTENSITY"
             }
 
-class IndiListener(QObject):
+class INDIListener(QObject):
     newDevice = pyqtSignal(ISD.GDInterface)
     newTelescope = pyqtSignal(ISD.GDInterface)
     newCCD = pyqtSignal(ISD.GDInterface)
@@ -73,15 +76,20 @@ class IndiListener(QObject):
     deviceRemoved = pyqtSignal(ISD.GDInterface)
     __instance = None
     def __new__(cls, parent):
-        if IndiListener.__instance is None:
-            IndiListener.__instance = QObject.__new__(cls)
-        return IndiListener.__instance
+        if INDIListener.__instance is None:
+            INDIListener.__instance = QObject.__new__(cls)
+        return INDIListener.__instance
     def __init__(self, parent):
-        if IndiListener.__instance is not None: pass
+        if INDIListener.__instance is not None: pass
         super().__init__(parent=parent)
         self.clients = list()
         self.devices = list()
         self.st4Devices = list()
+    @classmethod
+    def Instance(cls):
+        if INDIListener.__instance is None:
+            INDIListener.__instance = INDIListener(parent=None)
+        return INDIListener.__instance
     def isStandardProperty(self, name):
         return name in indi_std
     def getDevice(self, name):
@@ -89,3 +97,106 @@ class IndiListener(QObject):
             if gi.getDeviceName() == name:
                 return gi
         return None
+    def getDevices(self):
+        return self.devices
+    def size(self):
+        return len(self.devices)
+    def addClient(self, cm):
+        QLoggingCategory.qCDebug(QLoggingCategory.NPINDI, 'INDIListener: Adding a new client manager to INDI Listener')
+        self.clients.append(cm)
+        cm.newINDIDevice.connect(self.processDevice)
+        cm.removeINDIDevice.connect(self.removeDevice)
+        cm.newINDIProperty.connect(self.registerProperty)
+        cm.removeINDIProperty.connect(self.removeProperty)
+        cm.newINDISwitch.connect(self.processSwitch)
+        cm.newINDIText.connect(self.processText)
+        cm.newINDINumber.connect(self.processNumber)
+        cm.newINDILight.connect(self.processLight)
+        cm.newINDIBLOB.connect(self.processBLOB)
+        cm.newINDIUniversalMessage.connect(self.processUniversalMessage)
+    def removeClient(self, cm):
+        QLoggingCategory.qCDebug(QLoggingCategory.NPINDI, 'INDIListener: Removing client manager for server '+cm.getHost().decode('ascii')+'@'+str(cm.getPort()))
+        self.clients.remove(cm)
+        it = 0
+        while it < len(self.devices):
+            dv = self.devices[it].getDriverInfo()
+            hostSource = dv.getDriverSource() == DriverSource.HOST_SOURCE or dv.getDriverSource() == DriverSource.GENERATED_SOURCE
+            if cm.isDriverManaged(dv):
+                if dv.getAuxInfo().get('mdpd', False) is True:
+                    while it < len(self.devices):
+                        if dv.getDevice(self.devices[it].getDeviceName()) is not None:
+                            del(self.devices[it])
+                        else:
+                            break
+                else:
+                    del(self.devices[it])
+                cm.removeManagedDriver(dv)
+                cm.disconnect(self)
+                if hostSource:
+                    return
+            else:
+                it = it + 1
+    def processDevice(self, dv):
+        QLoggingCategory.qCDebug(QLoggingCategory.NPINDI, 'INDIListener: New device ' + dv.getBaseDevice().getDeviceName())
+        gd = ISD.GenericDevice(dv)
+        self.devices.append(gd)
+        self.newDevice.emit(gd)
+    def removeDevice(self, dv):
+        QLoggingCategory.qCDebug(QLoggingCategory.NPINDI, 'INDIListener: Removing device ' + dv.getBaseDevice().getDeviceName() +\
+          'with ubique label ' + dv.getDriverInfo().getUniqueLabel())
+        for gd in self.devices:
+            if gd.getDeviceInfo() == dv:
+                self.deviceRemoved.emit(gd)
+                self.devices.remove(gd)
+                del(gd)
+    def registerProperty(self, prop):
+        QLoggingCategory.qCDebug(QLoggingCategory.NPINDI, '<'+prop.getDeviceName()+'>: <'+prop.getName()+'>')
+        pname = prop.getName()
+        pdname = prop.getDeviceName()
+        for gd in self.devices:
+            if gd.getType() == DeviceFamily.KSTARS_UNKNOWN and pname in {'EQUATORIAL_EOD_COORD', 'HORIZONTAL_COORD'}:
+                self.devices.remove(gd)
+                gd = Telescope(gd)
+                self.devices.append(gd)
+                QLoggingCategory.qCDebug(QLoggingCategory.NPINDI, '<'+prop.getDeviceName()+'> is a ' + str(type(gd)))
+                self.newTelescope.emit(gd)
+            gd.registerProperty(prop)
+            break
+    def removeProperty(self, prop):
+        if prop is None: return
+        for gd in self.devices:
+            if gd.getDeviceName() == prop.getDeviceName():
+                gd.removeProperty(prop)
+                return
+    def processSwitch(self, svp):
+        for gd in self.devices:
+            if gd.getDeviceName() == svp.device:
+                gd.processSwitch(svp)
+                break
+    def processNumber(self, nvp):
+        for gd in self.devices:
+            if gd.getDeviceName() == nvp.device:
+                gd.processNumber(nvp)
+                break
+    def processText(self, tvp):
+        for gd in self.devices:
+            if gd.getDeviceName() == tvp.device:
+                gd.processText(tvp)
+                break
+    def processLight(self, lvp):
+        for gd in self.devices:
+            if gd.getDeviceName() == lvp.device:
+                gd.processLight(lvp)
+                break
+    def processBLOB(self, bp):
+        for gd in self.devices:
+            if gd.getDeviceName() == bp.vp.device:
+                gd.processBLOB(bp)
+                break
+    def processMessage(self, dp, messageID):
+        for gd in self.devices:
+            if gd.getDeviceName() == dp.getDeviceName():
+                gd.processMessage(messageID)
+                break
+    def processUniversalMessage(self, message):
+        QLoggingCategory.qCInfo(QLoggingCategory.NPINDI, message+' (INDI)')

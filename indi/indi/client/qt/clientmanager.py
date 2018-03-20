@@ -23,7 +23,7 @@ from indi.indibase.basedevice import BaseDevice
 from indi.client.qt.deviceinfo import DeviceInfo
 from indi.client.qt.indicommon import *
 from indi.client.qt.guimanager import GUIManager
-
+from indi.client.qt.indilistener import *
 
 class ClientManager(BaseClientQt):
     newINDIDevice=QtCore.pyqtSignal(DeviceInfo)
@@ -44,6 +44,10 @@ class ClientManager(BaseClientQt):
         BaseClientQt.__init__(self, mediator=self)
         self.managedDrivers = list()
         self.sManager = None
+    def count(self):
+        return len(self.managedDrivers)
+    def getServerManager(self):
+        return self.sManager
     def isDriverManaged(self, di):
         return di in self.managedDrivers
     def appendManagedDriver(self, dv):
@@ -53,8 +57,8 @@ class ClientManager(BaseClientQt):
     def removeManagedDriver(self, dv):
         dv.setClientState(False)
         for di in dv.getDevices():
-            #INDIListener::Instance()->removeDevice(di);
-            GUIManager.Instance().removeDevice(di);
+            INDIListener.Instance().removeDevice(di)
+            GUIManager.Instance().removeDevice(di)
             dv.removeDevice(di)
         self.managedDrivers.remove(dv)
         if dv.getDriverSource() == DriverSource.GENERATED_SOURCE:
