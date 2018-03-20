@@ -140,6 +140,14 @@ class INDI:
             return INDI.fs_sexa(value, w - f, s)
         else:
             return fmt % value
+    def IUFindText(tvp, name):
+        return tvp.vp.get(name, None)
+    def IUFindNumber(nvp, name):
+        return nvp.vp.get(name, None)
+    def IUFindLight(lvp, name):
+        return lvp.vp.get(name, None)
+    def IUFindBLOB(bvp, name):
+        return bvp.vp.get(name, None)
     def IUFindSwitch(svp, name):
         return svp.vp.get(name, None)
     def IUFindOnSwitch(svp):

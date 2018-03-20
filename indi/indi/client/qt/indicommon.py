@@ -26,7 +26,7 @@ MIN_SET_WIDTH = 50
 MAX_SET_WIDTH = 110
 MED_INDI_FONT = 2
 MAX_LABEL_LENGTH = 20
-class DriverSource(enum.Enum):
+class DriverSource(enum.IntEnum):
     PRIMARY_XML = 0
     THIRD_PARTY_XML = 1
     EM_XML = 2
@@ -127,5 +127,10 @@ class Options(QSettings):
         self.setValue('useDeviceSource', True)
         self.setValue('useTimeUpdate', True)
         self.setValue('useGeographicUpdate', True)
-        self.setValue('fitsDir', QDir.HomePath())
+        self.setValue('fitsDir', QDir.homePath())
         self.endGroup()
+    @classmethod
+    def Instance(cls):
+        if Options.__instance is None:
+            Options.__instance = Options(parent=None)
+        return Options.__instance

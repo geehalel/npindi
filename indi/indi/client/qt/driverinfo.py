@@ -115,7 +115,7 @@ class DriverInfo(QtCore.QObject):
         return self.treeLabel
     def setUniqueLabel(self, inUniqueLabel):
         if self.auxInfo.get('mdpd', False) == True or \
-            self.driverSource == DriverSource.HOST_SOURCE:
+            self.driverSource >= DriverSource.HOST_SOURCE:
             return
         self.uniqueLabel = inUniqueLabel
     def getUniqueLabel(self):

@@ -153,16 +153,16 @@ class ISD:
                     self.connected = True
                     self.Connected.emit()
                     self.createDeviceInit()
-            if prop.getName() == 'TIME_UTC' and Options.value('useTimeUpdate') and Options.value('useComputerSource'):
+            if prop.getName() == 'TIME_UTC' and Options.Instance().value('npindi/useTimeUpdate') and Options.Instance().value('npindi/useComputerSource'):
                 if prop.vp is None: return
                 if prop.p != INDI.IPerm.IP_RO:
                     self.updateTime()
-            elif prop.getName() == 'GEOGRAPHIC_COORD' and Options.value('useGeographicUpdate') and Options.value('useComputerSource'):
+            elif prop.getName() == 'GEOGRAPHIC_COORD' and Options.Instance().value('npindi/useGeographicUpdate') and Options.Instance().value('npindi/useComputerSource'):
                 if prop.vp is None: return
                 if prop.p != INDI.IPerm.IP_RO:
                     self.updateLocation()
             # TODO WATCHDOG_HEARTBEAT
-        def remove_property(self, prop):
+        def removeProperty(self, prop):
             self.properties.remove(prop)
             self.propertyDeleted.emit(prop)
         def processSwitch(self, prop):
@@ -182,7 +182,7 @@ class ISD:
                     self.Disconnected.emit()
             self.switchUpdated.emit(prop)
         def processNumber(self, prop):
-            if Options.value('useDeviceSource') and prop.name == 'GEOGRAPHIC_COORD' and prop.s == INDI.IPState.IPS_OK:
+            if Options.Instance().value('npindi/useDeviceSource') and prop.name == 'GEOGRAPHIC_COORD' and prop.s == INDI.IPState.IPS_OK:
                 # TODO Location
                 pass
             elif prop.name == 'WATCHDOG_HEARTBEAT':
@@ -190,7 +190,7 @@ class ISD:
                 pass
             self.numberUpdated.emit(prop)
         def processText(self, prop):
-            if Options.value('useDeviceSource') and prop.name == 'TIME_UTC' and prop.s == INDI.IPState.IPS_OK:
+            if Options.Instance().value('npindi/useDeviceSource') and prop.name == 'TIME_UTC' and prop.s == INDI.IPState.IPS_OK:
                 tp = IUFindText(prop, 'UTC')
                 if tp is None: return
                 indiDateTime = QDateTime.fromString(tp.text, Qt.ISODate)
@@ -206,7 +206,7 @@ class ISD:
                 return
             data_file = QFile()
             dataType = DATA_ASCII if bp.format == '.ascii' else DATA_OTHER
-            currentDir = Options.value('fitsDir')
+            currentDir = Options.Instance().value('npindi/fitsDir')
             if currentDir[-1] == '/':
                 currentDir = currentDir[0:-1]
             filename = currentDir + '/'
@@ -249,7 +249,7 @@ class ISD:
         def createDeviceInit(self):
             pass
         def updateTime(self):
-            now = QDateTime.currentDateTime()
+            now = QDateTime.currentDateTimeUtc()
             offset = now.offsetFromUtc() // 3600
             isoTS = now.toString(Qt.ISODate)
             timeUTC= self.baseDevice.getText('TIME_UTC')

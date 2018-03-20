@@ -5,3 +5,5 @@ class Telescope(ISD.DeviceDecorator):
     def __init__(self, iPtr):
         super().__init__(iPtr)
         self.dType = DeviceFamily.KSTARS_TELESCOPE
+    def registerProperty(self, prop):
+        super().registerProperty(prop)

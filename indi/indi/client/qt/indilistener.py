@@ -23,6 +23,7 @@ from indi.client.qt.deviceinfo import DeviceInfo
 from indi.client.qt.indistd import *
 
 from indi.client.qt.inditelescope import Telescope
+from indi.client.qt.indiccd import CCD
 
 indi_std = {
             "CONNECTION",
@@ -143,7 +144,7 @@ class INDIListener(QObject):
         self.newDevice.emit(gd)
     def removeDevice(self, dv):
         QLoggingCategory.qCDebug(QLoggingCategory.NPINDI, 'INDIListener: Removing device ' + dv.getBaseDevice().getDeviceName() +\
-          'with ubique label ' + dv.getDriverInfo().getUniqueLabel())
+          ' with unique label ' + str(dv.getDriverInfo().getUniqueLabel()))
         for gd in self.devices:
             if gd.getDeviceInfo() == dv:
                 self.deviceRemoved.emit(gd)
@@ -154,14 +155,21 @@ class INDIListener(QObject):
         pname = prop.getName()
         pdname = prop.getDeviceName()
         for gd in self.devices:
-            if gd.getType() == DeviceFamily.KSTARS_UNKNOWN and pname in {'EQUATORIAL_EOD_COORD', 'HORIZONTAL_COORD'}:
-                self.devices.remove(gd)
-                gd = Telescope(gd)
-                self.devices.append(gd)
-                QLoggingCategory.qCDebug(QLoggingCategory.NPINDI, '<'+prop.getDeviceName()+'> is a ' + str(type(gd)))
-                self.newTelescope.emit(gd)
-            gd.registerProperty(prop)
-            break
+            if gd.getDeviceName() == prop.getDeviceName():
+                if gd.getType() == DeviceFamily.KSTARS_UNKNOWN and pname in {'EQUATORIAL_EOD_COORD', 'HORIZONTAL_COORD'}:
+                    self.devices.remove(gd)
+                    gd = Telescope(gd)
+                    self.devices.append(gd)
+                    QLoggingCategory.qCDebug(QLoggingCategory.NPINDI, '<'+prop.getDeviceName()+'> is a ' + str(type(gd)))
+                    self.newTelescope.emit(gd)
+                if gd.getType() == DeviceFamily.KSTARS_UNKNOWN and pname in {'CCD_EXPOSURE'}:
+                    self.devices.remove(gd)
+                    gd = CCD(gd)
+                    self.devices.append(gd)
+                    QLoggingCategory.qCDebug(QLoggingCategory.NPINDI, '<'+prop.getDeviceName()+'> is a ' + str(type(gd)))
+                    self.newCCD.emit(gd)
+                gd.registerProperty(prop)
+                break
     def removeProperty(self, prop):
         if prop is None: return
         for gd in self.devices:
