@@ -61,7 +61,29 @@ class DeviceFamily(enum.Enum):
     KSTARS_WEATHER = 10
     KSTARS_AUXILIARY = 11
     KSTARS_UNKNOWN = 12
+class INDIConfig(enum.Enum):
+    LOAD_LAST_CONFIG = 0
+    SAVE_CONFIG = 1
+    LOAD_DEFAULT_CONFIG = 2
+class INDIDataType(enum.Enum):
+    DATA_FITS = 0
+    DATA_VIDEO = 1
+    DATA_CCDPREVIEW = 2
+    DATA_ASCII = 3
+    DATA_OTHER = 4
+class DeviceCommand(enum.Enum):
+    INDI_SEND_COORDS = 0
+    INDI_ENGAGE_TRACKING = 1
+    INDI_CENTER_LOCK = 2
+    INDI_CENTER_UNLOCK = 3
+    INDI_SET_PORT = 4
+    INDI_CONNECT = 5
+    INDI_DISCONNECT = 6
+    INDI_SET_FILTER = 7
+    INDI_SET_ROTATOR_TICKS = 8
+    INDI_SET_ROTATOR_ANGLE = 9
 
+##### npindi specific stuff #####
 from PyQt5 import QtCore
 # PyQt5 lacks QLoggingCategory
 # QLoggingCategory.Q_LOGGING_CATEGORY(NPINDI, 'npindi')
@@ -76,6 +98,7 @@ class QLoggingCategory(enum.Enum):
         QtCore.qDebug(cat.value+': '+msg)
     def qCWarning(cat, msg):
         QtCore.qWarning(cat.value+': '+msg)
+# a simple square led
 from PyQt5.QtWidgets import QFrame
 class QLed(QFrame):
     def __init__(self, parent=None):
@@ -88,3 +111,21 @@ class QLed(QFrame):
     def setColor(self, color):
         self._mcolor = color
         self.setStyleSheet('QFrame {background-color: '+self._mcolor+'}')
+# Config/Settings, derived from kstars::Options
+from PyQt5.QtCore import QSettings, QDir
+class Options(QSettings):
+    __instance = None
+    def __new__(cls, parent):
+        if Options.__instance is None:
+            Options.__instance = QSettings.__new__(cls)
+        return Options.__instance
+    def __init__(self, parent):
+        if Options.__instance is not None: pass
+        super().__init__(parent=parent)
+        self.beginGroup('npindi')
+        self.setValue('useComputerSource', True)
+        self.setValue('useDeviceSource', True)
+        self.setValue('useTimeUpdate', True)
+        self.setValue('useGeographicUpdate', True)
+        self.setValue('fitsDir', QDir.HomePath())
+        self.endGroup()

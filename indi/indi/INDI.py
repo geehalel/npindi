@@ -19,8 +19,9 @@ import enum
 import re
 from collections import OrderedDict
 class INDI:
-    MAXINDIBUF=49152
-    INDIV=b'1.7'
+    MAXINDIFILENAME = 64
+    MAXINDIBUF = 49152
+    INDIV = b'1.7'
     class SP:
         CONNECTION='CONNECTION'
         DEVICE_PORT='DEVICE_PORT'

@@ -51,6 +51,28 @@ class BaseDevice:
         self.message_log=[]
     def getDeviceName(self):
         return self.name
+    def getNumber(self, name):
+        return self.properties.get(name, None)
+    def getText(self, name):
+        return self.properties.get(name, None)
+    def getSwitch(self, name):
+        return self.properties.get(name, None)
+    def getLight(self, name):
+        return self.properties.get(name, None)
+    def getBLOB(self, name):
+        return self.properties.get(name, None)
+    def getRawProperty(self, name, ptype):
+        return self.properties.get(name, None)
+    def getPropertyState(self, name):
+        p = self.properties.get(name, None)
+        if p is not None:
+            return p.s
+        return INDI.IPState.IPS_IDLE
+    def getPropertyPermission(self, name):
+        p = self.properties.get(name, None)
+        if p is not None:
+            return p.p
+        return INDI.ISRule.IP_RO
     def check_message(self, elem):
         message=elem.get('message')
         if not message or message=='':
