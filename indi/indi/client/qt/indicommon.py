@@ -111,6 +111,10 @@ class QLed(QFrame):
     def setColor(self, color):
         self._mcolor = color
         self.setStyleSheet('QFrame {background-color: '+self._mcolor+'}')
+# Default getLST fonction
+from PyQt5.QtCore import QDateTime
+def getLST():
+    return 0.0
 # Config/Settings, derived from kstars::Options
 from PyQt5.QtCore import QSettings, QDir
 class Options(QSettings):
@@ -128,6 +132,11 @@ class Options(QSettings):
         self.setValue('useTimeUpdate', True)
         self.setValue('useGeographicUpdate', True)
         self.setValue('fitsDir', QDir.homePath())
+        self.endGroup()
+        self.beginGroup('location')
+        self.setValue('latitude', 50.3)
+        self.setValue('longitude', 123.4)
+        self.setValue('elevation', 132)
         self.endGroup()
     @classmethod
     def Instance(cls):

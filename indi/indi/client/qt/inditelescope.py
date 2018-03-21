@@ -1,4 +1,5 @@
 from PyQt5.QtCore import pyqtSignal, pyqtSlot
+from indi.client.qt.indicommon import *
 from indi.client.qt.indistd import *
 from indi.client.qt.skypoint import *
 from indi.INDI import *
@@ -101,4 +102,13 @@ class Telescope(ISD.DeviceDecorator):
 
         super().registerProperty(prop)
     def processNumber(self, nvp):
+        if nvp.name == 'EQUATORIAL_EOD_COORD':
+            RA = INDI.IUFindNumber(nvp, 'RA')
+            DEC = INDI.IUFindNumber(nvp, 'DEC')
+            if RA is None or DEC is None:
+                return
+            self.currentCoord.setRA(RA.value)
+            self.currentCoord.setDec(DEC.value)
+            self.currentCoord.EquatorialToHorizontal(getLST(), Options.Instance().value('location/latitude'))
+            self.EqCoordPreviousState = nvp.s
         super().processNumber(nvp)
