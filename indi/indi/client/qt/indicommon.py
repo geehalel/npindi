@@ -71,6 +71,12 @@ class INDIDataType(enum.Enum):
     DATA_CCDPREVIEW = 2
     DATA_ASCII = 3
     DATA_OTHER = 4
+class GuideDirection:
+    NO_DIR = 0
+    RA_INC_DIR = 1
+    RA_DEC_DIR = 2
+    DEC_INC_DIR = 3
+    DEC_DEC_DIR = 4
 class DeviceCommand(enum.Enum):
     INDI_SEND_COORDS = 0
     INDI_ENGAGE_TRACKING = 1
@@ -111,10 +117,36 @@ class QLed(QFrame):
     def setColor(self, color):
         self._mcolor = color
         self.setStyleSheet('QFrame {background-color: '+self._mcolor+'}')
-# Default getLST fonction
-from PyQt5.QtCore import QDateTime
-def getLST():
-    return 0.0
+# Default getJD/getLST fonction
+from PyQt5.QtCore import QDateTime, QDate
+import math
+def getJD():
+    now = QDateTime.currentDateTimeUtc()
+    jd0 = now.date().toJulianDay() - 0.5
+    h = now.time().msecsSinceStartOfDay() / (3600 * 1000)
+    jd = jd0 + h / 24.0
+    return jd
+def getGAST():
+    # using approximation from http://aa.usno.navy.mil/faq/docs/GAST.php
+    now = QDateTime.currentDateTimeUtc()
+    jd0 = now.date().toJulianDay() - 0.5
+    h = now.time().msecsSinceStartOfDay() / (3600 * 1000)
+    jd = jd0 + h / 24.0
+    d = jd - 2451545.0
+    d0 = jd0 - 2451545.0
+    t = d / 36525
+    gmst = 6.697374558 + 0.06570982441908 * d0 + 1.00273790935 * h + 0.000026 * (t * t)
+    omega = 125.04 - 0.052954 * d
+    l = 280.47 + 0.98565 * d
+    epsilon = 23.4394 - 0.0000004 * d
+    nutlon = -0.000319 * math.sin(math.radians(omega)) - 0.000024 * math.sin(math.radians(2 * l))
+    eqeq = nutlon * math.cos(math.radians(epsilon))
+    gast = gmst + eqeq
+    while gast < 0.0:
+        gast += 24.0
+    while gast >= 24.0:
+        gast -= 24.0
+    return gast
 # Config/Settings, derived from kstars::Options
 from PyQt5.QtCore import QSettings, QDir
 class Options(QSettings):
@@ -131,6 +163,7 @@ class Options(QSettings):
         self.setValue('useDeviceSource', True)
         self.setValue('useTimeUpdate', True)
         self.setValue('useGeographicUpdate', True)
+        self.setValue('useRefraction', True)
         self.setValue('fitsDir', QDir.homePath())
         self.endGroup()
         self.beginGroup('location')

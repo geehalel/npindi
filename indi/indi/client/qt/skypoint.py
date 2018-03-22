@@ -1,4 +1,5 @@
 #from PyQt5.QtPositioning import QGeoCoordinate
+from indi.client.qt.indicommon import Options
 import math
 import enum
 
@@ -14,15 +15,58 @@ class dms:
         self.D = float('nan')
         if x is not None: self.D = float(x)
     def __add__(self, other):
-        return dms(self.D + other.D)
+        if type(other) == int or type(other) == float:
+            return dms(self.D + other)
+        else:
+            return dms(self.D + other.D)
+    def __radd__(self, other):
+        return dms.__add__(self, other)
     def __sub__(self, other):
-        return dms(self.D - other.D)
+        if type(other) == int or type(other) == float:
+            return dms(self.D - other)
+        else:
+            return dms(self.D - other.D)
+    def __rsub__(self, other):
+        return -dms.__sub__(self, other)
+    def __mul__(self, other):
+        if type(other) == int or type(other) == float:
+            return dms(self.D * other)
+        else:
+            return dms(self.D * other.D)
+    def __rmul__(self, other):
+        return dms.__mul__(self, other)
+    def __truediv__(self, other):
+        if type(other) == int or type(other) == float:
+            return dms(self.D / other)
+        else:
+            return dms(self.D / other.D)
+    def __rtruediv__(self, other):
+        if type(other) == int or type(other) == float:
+            return dms(other / self.D)
+        else:
+            return dms(other.D / self.D)
     def __neg__(self):
         return dms(-self.D)
     def __eq__(self, other):
-        return self.D == other.D
+        def __lt__(self, other):
+            if type(other) == int or type(other) == float:
+                return self.D == other
+            else:
+                return self.D == other.D
+    def __lt__(self, other):
+        if type(other) == int or type(other) == float:
+            return self.D < other
+        else:
+            return self.D < other.D
+    def __gt__(self, other):
+        if type(other) == int or type(other) == float:
+            return self.D > other
+        else:
+            return self.D > other.D
     def Degrees(self):
         return self.D
+    def Hours(self):
+        return self.reduce().Degrees() / 15.0
     def setD(self, x):
         self.D = float(x)
     def setH(self, x):
@@ -57,6 +101,7 @@ class dms:
     def sin(self):
         return math.sin(math.radians(self.D))
 class SkyPoint:
+    altCrit = -1.0
     def __init__(self, r = None, d = None):
         self.RA0 = dms(-1)
         self.Dec0 =  dms(-1)
@@ -68,7 +113,7 @@ class SkyPoint:
         if r is not None and d is not None:
             if isinstance(r, dms) and isinstance(d, dms):
                 self.RA0.setD(r.D); self.RA.setD(r.D)
-                self.Dec0.setD(d.D); self.Dec.set(d.D)
+                self.Dec0.setD(d.D); self.Dec.setD(d.D)
             elif isinstance(r, float) and isinstance(d, float):
                 self.RA0.setH(r); self.RA.setH(r)
                 self.Dec0.setD(d); self.Dec.setD(d)
@@ -81,32 +126,32 @@ class SkyPoint:
     def setRA0(self, r):
         if isinstance(r, dms):
             self.RA0 = r
-        elif isinstance(r, float):
+        elif isinstance(r, float) or isinstance(r, int):
             self.RA0.setH(r)
     def setDec0(self, d):
         if isinstance(d, dms):
             self.Dec0 = d
-        elif isinstance(d, float):
+        elif isinstance(d, float) or isinstance(d, int):
             self.Dec0.setD(d)
     def setRA(self, r):
         if isinstance(r, dms):
             self.RA = r
-        elif isinstance(r, float):
+        elif isinstance(r, float) or isinstance(r, int):
             self.RA.setH(r)
     def setDec(self, d):
         if isinstance(d, dms):
             self.Dec = d
-        elif isinstance(d, float):
+        elif isinstance(d, float) or isinstance(d, int):
             self.Dec.setD(d)
     def setAlt(self, alt):
         if isinstance(alt, dms):
             self.Alt = alt
-        elif isinstance(alt, float):
+        elif isinstance(alt, float) or isinstance(alt, int):
             self.Alt.setD(alt)
     def setAz(self, az):
         if isinstance(az, dms):
             self.Az = az
-        elif isinstance(az, float):
+        elif isinstance(az, float) or isinstance(az, int):
             self.Az.setD(az)
     def ra0(self): return self.RA0
     def dec0(self): return self.Dec0
@@ -137,4 +182,45 @@ class SkyPoint:
         if sinHA > 0.0:
             AzRad = 2.0 * math.pi - AzRad
         self.Alt.setRadians(AltRad)
-        self.Az.setRadians(AzRad) 
+        self.Az.setRadians(AzRad)
+    def HorizontalToEquatorial(self, lst, lat):
+        if not isinstance(lst, dms) or not isinstance(lat, dms):
+            raise ValueError('SkyPoint: lst and lat should be dms objects')
+        sinlat, coslat = lat.SinCos()
+        sinAlt, cosAlt = self.alt().SinCos()
+        sinAz, cosAz = self.az().SinCos()
+        sinDec = sinAlt * sinlat + cosAlt * coslat * cosAz
+        DecRad = math.asin(sinDec)
+        cosDec = math.cos(DecRad)
+        self.Dec.setRadians(DecRad)
+        x = (sinAlt - sinlat * sinDec) / (coslat * cosDec)
+        if x < -1.0 and x > -1.000001:
+            HARad = math.pi
+        elif x > 1.0 and x < 1.000001:
+            HARad = 0.0
+        elif x < -1.0:
+            HARad = math.pi
+        elif x > 1.0:
+            HARad = 0.0
+        else:
+            HARad = math.acos(x)
+        if sinAz > 0.0:
+            HARad = 2 * math.pi - HARad
+        self.RA.setRadians(lst.radians() - HARad)
+        self.RA.reduceToRange(dms.AngleRanges.ZERO_TO_2PI)
+    def apparentCoord(self, jd0, jdf):
+        pass
+    def altRefracted(self):
+        if Options.Instance().value('npindi/useRefraction'):
+            return dms(self.refract(self.Alt.Degrees()))
+        else:
+            return self.Alt
+    @staticmethod
+    def refractionCorr(alt):
+        return 1.02 / math.tan((math.pi/180.0) * (alt + 10.3 /(alt + 5.11))) / 60.0
+    def refract(self, alt):
+        corrCrit = SkyPoint.refractionCorr(SkyPoint.altCrit)
+        if alt > SkyPoint.altCrit:
+            return (alt + SkyPoint.refractionCorr(alt))
+        else:
+            return (alt + corrCrit * (alt + 90.0) / (SkyPoint.altCrit + 90.0))
