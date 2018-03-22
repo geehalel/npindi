@@ -250,8 +250,8 @@ class ISD:
             pass
         def updateTime(self):
             now = QDateTime.currentDateTimeUtc()
-            offset = now.offsetFromUtc() // 3600
-            isoTS = now.toString(Qt.ISODate)
+            offset = QDateTime.currentDateTime().offsetFromUtc() // 3600
+            isoTS = now.toString(Qt.ISODate)[:-1]
             timeUTC= self.baseDevice.getText('TIME_UTC')
             if timeUTC:
                 timeEle = INDI.IUFindText(timeUTC, 'UTC')
@@ -263,8 +263,18 @@ class ISD:
                 if timeEle and offsetEle:
                     self.clientManager.send_new_property(timeUTC)
         def updateLocation(self):
-            # TODO Location
-            pass
+            locationNP = self.baseDevice.getNumber('GEOGRAPHIC_COORD')
+            if locationNP is None:
+                return
+            latEle = INDI.IUFindNumber(locationNP, 'LAT')
+            lonEle = INDI.IUFindNumber(locationNP, 'LONG')
+            eleEle = INDI.IUFindNumber(locationNP, 'ELEV')
+            if latEle is None or lonEle is None or eleEle is None:
+                return
+            latEle.value = Options.Instance().value('location/latitude')
+            lonEle.value = Options.Instance().value('location/longitude')
+            eleEle.value = Options.Instance().value('location/elevation')
+            self.clientManager.send_new_property(locationNP)
         def Connect(self):
             return self.runCommand(DeviceCommand.INDI_CONNECT)
         def Disconnect(self):

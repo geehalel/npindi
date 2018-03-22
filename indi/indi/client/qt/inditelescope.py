@@ -54,6 +54,20 @@ class Telescope(ISD.DeviceDecorator):
         self.m_hasCustomParking = False
     def getType(self):
         return self.dType
+    def canControlTrack(self):
+        return m_canControlTrack
+    def hasTrackModes(self):
+        return m_hasTrackModes
+    def hasCustomTrackRate(self):
+        return m_hasCustomTrackRates
+    def isParked(self):
+        return self.parkStatus == ParkStatus.PARK_PARKED
+    def canCustomPark(self):
+        return m_hasCustomParking
+    def getParkStatus(self):
+        return self.parkStatus
+    def hasAlignmantModel(self):
+        return m_hasAlignmentModel
     def getEqCoords(self):
         ra, dec = None, None
         EqProp = self.baseDevice.getNumber('EQUATORIAL_EOD_COORD')
@@ -348,6 +362,7 @@ class Telescope(ISD.DeviceDecorator):
                 syncSW.s = INDI.ISState.ISS_ON
                 self.clientManager.send_new_property(motionSP)
             return self.sendCoords(ScopeTarget)
+        @pyqtSlot()
         def Abort(self):
             motionSP = self.baseDevice.getSwitch('TELESCOPE_ABORT_MOTION')
             if motionSP is None:
@@ -359,6 +374,7 @@ class Telescope(ISD.DeviceDecorator):
             self.clientManager.send_new_property(motionSP)
             self.inCustomParking = False
             return True
+        @pyqtSlot()
         def Park(self):
             parkSP = self.baseDevice.getSwitch('TELESCOPE_PARK')
             if parkSP is None:
@@ -370,6 +386,7 @@ class Telescope(ISD.DeviceDecorator):
             parkSW.s = INDI.ISState.ISS_ON
             self.clientManager.send_new_property(parkSP)
             return True
+        @pyqtSlot()
         def UnPark(self):
             parkSP = self.baseDevice.getSwitch('TELESCOPE_PARK')
             if parkSP is None:
@@ -421,6 +438,7 @@ class Telescope(ISD.DeviceDecorator):
                     motionEast.s = INDI.ISState.ISS_ON
             self.clientManager.send_new_property(motionSP)
             return True
+        @pyqtSlot(int)
         def setSlewRate(self, index):
             slewRateSP = self.baseDevice.getSwitch('TELESCOPE_SLEW_RATE')
             if slewRateSP is None:
@@ -434,6 +452,41 @@ class Telescope(ISD.DeviceDecorator):
         def setAltLimits(self, minAltitude, maxAltitude):
             self.minAlt = minAltitude
             self.maxAlt = maxAltitude
+        def setAlignmentModelEnabled(self, enable):
+            wasExecuted = False
+            alignSwitch = self.baseDevice.getSwitch('ALIGNMENT_SUBSYSTEM_ACTIVE')
+            if alignSwitch is not None:
+                alignSwitch.vp['ALIGNMENT SUBSYSTEM ACTIVE'].s = INDI.ISState.ISS_ON if enable else INDI.ISState.ISS_OFF
+                self.clientManager.send_new_property(alignSwitch)
+                wasExecuted = True
+            alignSwitch = self.baseDevice.getSwitch('ALIGNMODE')
+            if alignSwitch is not None:
+                INDI.IUResetSwitch(alignSwitch)
+                if enable:
+                    alignSwitch.vp['ALIGNNSTAR'].s = INDI.ISState.ISS_ON
+                else:
+                    alignSwitch.vp['NOALIGN'].s = INDI.ISState.ISS_ON
+                self.clientManager.send_new_property(alignSwitch)
+                wasExecuted = True
+            return wasExecuted
+        def clearAlignmentModel(self):
+            wasExecuted = False
+            clearSwitch = self.baseDevice.getSwitch('ALIGNMENT_POINTSET_ACTION')
+            commitSwitch = self.baseDevice.getSwitch('ALIGNMENT_POINTSET_COMMIT')
+            if clearSwitch is not None and commitSwitch is not None:
+                INDI.IUResetSwitch(clearSwitch)
+                clearSwitch.vp['CLEAR'].s = INDI.ISState.ISS_ON
+                self.clientManager.send_new_property(clearSwitch)
+                commitSwitch.vp['COMMIT'].s = INDI.ISState.ISS_ON
+                self.clientManager.send_new_property(commitSwitch)
+                wasExecuted = True
+            clearSwitch = self.baseDevice.getSwitch('ALIGNLIST')
+            if clearSwitch is not None:
+                IUResetSwitch(clearSwitch)
+                clearSwitch.vp['ALIGNLISTCLEAR'].s = INDI.ISState.ISS_ON
+                self.clientManager.send_new_property(clearSwitch)
+                wasExecuted = True
+            return wasExecuted
         def getStatus(self):
             EqProp = self.baseDevice.getNumber('EQUATORIAL_EOD_COORD')
             if EqProp is None:
@@ -465,6 +518,39 @@ class Telescope(ISD.DeviceDecorator):
                 self.inCustomParking = False
                 return TelescopeStatus.MOUNT_ERROR
             return TelescopeStatus.MOUNT_ERROR
+        def getStatusString(self, status):
+            if status == TelescopeStatus.MOUNT_IDLE:
+                return 'Idle'
+            if status == TelescopeStatus.MOUNT_PARKED:
+                return 'Parked'
+            if status == TelescopeStatus.MOUNT_PARKING:
+                return 'Parking'
+            if status == TelescopeStatus.MOUNT_SLEWING:
+                return 'Slewing'
+            if status == TelescopeStatus.MOUNT_MOVING:
+                return 'Moving ' + self.getManualMotionString()
+            if status == TelescopeStatus.MOUNT_TRACKING:
+                return 'Tracking'
+            if status == TelescopeStatus.MOUNT_ERROR:
+                return 'Error'
+            return 'Error'
+        def getManualMotionString(self):
+            movementSP = self.baseDevice.getSwitch('TELESCOPE_MOTION_NS')
+            NSMotion = ''
+            if movementSP is not None:
+                if movementSP.vp['MOTION_NORTH'].s == INDI.ISState.ISS_ON:
+                    NSMotion = 'N'
+                elif movementSP.vp['MOTION_SOUTH'].s == INDI.ISState.ISS_ON:
+                    NSMotion = 'S'
+            movementSP = slef.baseDevice.getSwitch('TELESCOPE_MOTION_WE')
+            WEMotion = ''
+            if movementSP is not None:
+                if movementSP.vp['MOTION_WEST'].s == INDI.ISState.ISS_ON:
+                    WEMotion = 'W'
+                elif movementSP.vp['MOTION_EAST'].s == INDI.ISState.ISS_ON:
+                    WEMotion = 'E'
+            return NSMotion + WEMotion
+        @pyqtSlot(bool)
         def setTrackEnabled(self, enable):
             trackSP = self.baseDevice.getSwitch('TELESCOPE_TRACK_STATE')
             if trackSP is None:
@@ -478,7 +564,45 @@ class Telescope(ISD.DeviceDecorator):
             self.clientManager.send_new_property(trackSP)
         def isTracking(self):
             return self.getStatus() == TelescopeStatus.MOUNT_TRACKING
-
+        @pyqtSlot(int)
+        def setTrackMode(self, index):
+            trackModeSP = self.baseDevice.getSwitch('TELESCOPE_TRACK_MODE')
+            if trackModeSP is None:
+                return False
+            if index < 0 or index >= len(trackModeSP.vp):
+                return False
+            INDI.IUResetSwitch(trackModeSP)
+            list(trackModeSP.vp.values())[index].s = INDI.ISState.ISS_ON
+            self.clientManager.send_new_property(trackModeSP)
+            return True
+        def getTrackMode(self):
+            trackModeSP = self.baseDevice.getSwitch('TELESCOPE_TRACK_MODE')
+            if trackModeSP is None:
+                return None
+            index = INDI.IUFindOnSwitchIndex(trackModeSP)
+            return index
+        @pyqtSlot(float, float)
+        def setCustomTrackRate(self, raRate, deRate):
+            trackRateNP = self.baseDevice.getNumber('TELESCOPE_TRACK_RATE')
+            if trackRateNP is None:
+                return False
+            raRateN = INDI.IUFindNumber(trackRateNP, 'TRACK_RATE_RA')
+            deRateN = INDI.IUFindNumber(trackRateNP, 'TRACK_RATE_DE')
+            if raRateN is None or deRateN is None:
+                return False
+            raRateN.value = raRate
+            deRateN.value = deRate
+            self.clientManager.send_new_property(trackRateNP)
+            return True
+        def getCustomTrackRate(self):
+            trackRateNP = self.baseDevice.getNumber('TELESCOPE_TRACK_RATE')
+            if trackRateNP is None:
+                return (None, None)
+            raRateN = INDI.IUFindNumber(trackRateNP, 'TRACK_RATE_RA')
+            deRateN = INDI.IUFindNumber(trackRateNP, 'TRACK_RATE_DE')
+            if raRateN is None or deRateN is None:
+                return (None, None)
+            return (raRateN.value, deRateN.value)
         def sendParkingOptionCommand(self, command):
             parkOptionsSp = self.baseDevice.getSwitch('TELESCOPE_PARK_OPTION')
             if parkOptionsSp is None:
