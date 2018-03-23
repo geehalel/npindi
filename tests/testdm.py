@@ -1,13 +1,14 @@
 from PyQt5 import QtCore
 from PyQt5.QtWidgets import QWidget, QPushButton, QApplication, QMainWindow, QMessageBox, QAction
 from indi.client.qt.drivermanager import DriverManager
+from indi.client.qt.guimanager import GUIManager
 class TestWidget(QMainWindow):
     def __init__(self):
         super().__init__()
         self.initUI()
     def initUI(self):
         self.exitAct = QAction("E&xit", self, shortcut="Ctrl+Q",
-            statusTip="Exit the application", triggered=self.close)
+            statusTip="Exit the application", triggered=self.quit)
         self.aboutAct = QAction("&About", self,
                     statusTip="Show the application's About box",
                     triggered=self.about)
@@ -24,17 +25,16 @@ class TestWidget(QMainWindow):
         self.helpMenu.addAction(self.aboutAct)
         self.helpMenu.addAction(self.aboutQtAct)
 
-        #qbtn = QPushButton('Quit', self)
-        #qbtn.clicked.connect(self.quit)
-        #qbtn.resize(qbtn.sizeHint())
-        #qbtn.move(50, 50)
 
-        #self.setGeometry(300, 300, 250, 150)
         self.setWindowTitle('Test DriverManager')
         self.show()
+    def closeEvent(self, event):
+        self.quit()
     def quit(self):
+        GUIManager.Instance().close()
+        DriverManager.Instance().close()
         self.close()
-        QApplication.instance().quit()
+        #QApplication.instance().quit()
     def about(self):
         QMessageBox.about(self, 'Driver Manager Test',
                 'This <b>Test</b> example demonstrates how to integrate '
@@ -80,5 +80,5 @@ for gkey, ggroup in ag.items():
         gmenu.addAction(a)
 rc=app.exec_()
 #dm_ui.hide()
-DriverManager.Instance().hide()
+#DriverManager.Instance().hide()
 sys.exit(rc)
