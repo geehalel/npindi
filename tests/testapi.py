@@ -1,9 +1,33 @@
 from PyQt5 import QtCore
-from PyQt5.QtWidgets import QWidget, QPushButton, QApplication, QMainWindow, QMessageBox, QAction
+from PyQt5.QtWidgets import QWidget, QPushButton, QApplication, QMainWindow, QMessageBox, QAction, QGroupBox, QVBoxLayout, QTextEdit
+from indi.client.qt.indicommon import *
 from indi.client.qt.drivermanager import DriverManager
-class TestWidget(QMainWindow):
+from indi.client.qt.indilistener import INDIListener
+from indi.client.qt.indistd import *
+from indi.client.qt.inditelescope import Telescope
+
+# used for inspection in APIHandler
+import inspect
+class APIHandler(QtCore.QObject):
+    def __init__(self, gd_device):
+        super().__init__()
+        self.gd_device = gd_device
+        QLoggingCategory.qCDebug(QLoggingCategory.NPINDI,' API handler; new device '+ self.gd_device.getDeviceName())
+        self.ui = None
+    def buildUI(self):
+        self.ui = QGroupBox(self.gd_device.getDeviceName())
+        self.layout = QVBoxLayout(self.ui)
+        self.logs = QTextEdit(self.ui)
+        self.logs.setReadOnly(True)
+        self.layout.addWidget(self.logs)
+        for m in inspect.getmembers(self.gd_device, inspect.ismethod):
+            self.logs.append('method '+m[0] + '--' + m[1].__qualname__ + ' -- sig: ' + str(inspect.signature(m[1])))
+        return self.ui
+
+class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
+        self.apihandlers = list()
         self.initUI()
     def initUI(self):
         self.exitAct = QAction("E&xit", self, shortcut="Ctrl+Q",
@@ -23,23 +47,24 @@ class TestWidget(QMainWindow):
         self.helpMenu = self.menuBar().addMenu("&Help")
         self.helpMenu.addAction(self.aboutAct)
         self.helpMenu.addAction(self.aboutQtAct)
+        self.centralFrame = QFrame()
+        self.setCentralWidget(self.centralFrame)
+        self.centrallayout = QVBoxLayout(self.centralFrame)
+        INDIListener.Instance().newTelescope.connect(self.addAPIHandler)
 
-        #qbtn = QPushButton('Quit', self)
-        #qbtn.clicked.connect(self.quit)
-        #qbtn.resize(qbtn.sizeHint())
-        #qbtn.move(50, 50)
-
-        #self.setGeometry(300, 300, 250, 150)
-        self.setWindowTitle('Test DriverManager')
+        self.setWindowTitle('Test PyQt INDI API')
         self.show()
-    def quit(self):
-        self.close()
-        QApplication.instance().quit()
-    def about(self):
-        QMessageBox.about(self, 'Driver Manager Test',
-                'This <b>Test</b> example demonstrates how to integrate '
-                'PyQt Driver Manager in your Qt application, inside a menu bar. ')
 
+    def about(self):
+        QMessageBox.about(self, 'API Test',
+                'This <b>API</b> example demonstrates how to integrate '
+                'PyQt INDI API in your Qt application. ')
+    @QtCore.pyqtSlot(ISD.GDInterface)
+    def addAPIHandler(self, gdi):
+        apih = APIHandler(gdi)
+        apihui = apih.buildUI()
+        self.centrallayout.addWidget(apihui)
+        self.apihandlers.append(apih)
 
 # No logging category in PyQt5 and debug output is disabled
 # thus install a message handler and filter our category
@@ -66,19 +91,15 @@ QtCore.qInstallMessageHandler(qt_message_handler)
 
 import sys
 app=QApplication(sys.argv)
-test_widget=TestWidget()
+mainWin=MainWindow()
 
-#dm_ui=DriverManagerUI()
-#dm_ui.show()
-#DriverManager.Instance().setParent(test_widget)
 DriverManager.Instance().show()
 ag = DriverManager.Instance().getActionGroups()
 for gkey, ggroup in ag.items():
-    test_widget.menuBar().addSeparator()
-    gmenu = test_widget.menuBar().addMenu(gkey)
+    mainWin.menuBar().addSeparator()
+    gmenu = mainWin.menuBar().addMenu(gkey)
     for a in ggroup.actions():
         gmenu.addAction(a)
+
 rc=app.exec_()
-#dm_ui.hide()
-DriverManager.Instance().hide()
 sys.exit(rc)

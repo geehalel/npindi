@@ -16,7 +16,7 @@
 #    along with npindi.  If not, see <http://www.gnu.org/licenses/>.
 
 from PyQt5 import QtCore, Qt
-from PyQt5.QtWidgets import QFrame, QTreeWidgetItem, QDialog, QVBoxLayout
+from PyQt5.QtWidgets import QFrame, QTreeWidgetItem, QDialog, QVBoxLayout, QActionGroup, QAction
 from PyQt5.QtWidgets import QDialogButtonBox, QMessageBox
 from PyQt5.QtGui import QIcon
 from PyQt5 import uic
@@ -69,7 +69,11 @@ class DriverManager(QDialog):
         HOST_STATUS_COLUMN = 0
         HOST_NAME_COLUMN = 1
         HOST_PORT_COLUMN = 2
-    # TODO implement as singleton
+    __instance = None
+    def __new__(cls, parent):
+        if DriverManager.__instance is None:
+            DriverManager.__instance = QDialog.__new__(cls)
+        return DriverManager.__instance
     def __init__(self, parent=None):
         super().__init__(parent)
         self.connectionMode = ServerMode.SERVER_CLIENT
@@ -100,6 +104,15 @@ class DriverManager(QDialog):
         self.ui.localTreeWidget.itemClicked.connect(self.updateLocalTab)
         self.ui.clientTreeWidget.itemClicked.connect(self.updateClientTab)
         self.ui.localTreeWidget.expanded.connect(self.resizeDeviceColumn)
+        # action groups
+        self.actionGroups = dict()
+        self.ag_indi = QActionGroup(self)
+        self.toggleDMAct = QAction('Driver Manager', self, statusTip='Show/hide Driver Manager', triggered=self.toggleDM)
+        self.toggleCPAct = QAction('Control Panel', self, statusTip='Show/hide control panel', triggered=lambda _: GUIManager.Instance().updateStatus(True))
+        self.ag_indi.addAction(self.toggleDMAct)
+        self.ag_indi.addAction(self.toggleCPAct)
+        self.actionGroups['INDI'] = self.ag_indi
+
         # Local server not implemented yet
         self.ui.ConfTabWidget.setTabEnabled(0, False)
         #For testing purpose
@@ -116,6 +129,20 @@ class DriverManager(QDialog):
         item.setText(self.HostColumns.HOST_PORT_COLUMN.value,
             '7624')
         # end testing item
+    @classmethod
+    def Instance(cls):
+        if DriverManager.__instance is None:
+            DriverManager.__instance = DriverManager(parent=None)
+        return DriverManager.__instance
+    def getActionGroups(self):
+        return self.actionGroups
+    def toggleDM(self):
+        if self.isVisible() : #and self.isActiveWindow():
+            self.hide()
+        else:
+            self.raise_()
+            self.activateWindow()
+            self.showNormal()
     def addINDIHost(self):
         hostConfDialog = QDialog()
         uiFile = os.path.dirname(inspect.getfile(inspect.currentframe()))

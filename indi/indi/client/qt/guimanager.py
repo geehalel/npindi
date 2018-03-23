@@ -79,7 +79,8 @@ class GUIManager(QWidget):
     def updateStatus(self, toggle_behavior):
         if len(self.guidevices) == 0:
             return
-        if self.isVisible() and self.isActiveWindow() and toggle_behavior:
+        #if self.isVisible() and self.isActiveWindow() and toggle_behavior:
+        if self.isVisible() and toggle_behavior:    
             self.hide()
         else:
             self.raise_()
