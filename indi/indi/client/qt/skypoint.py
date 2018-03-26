@@ -83,12 +83,12 @@ class dms:
         self.D = math.degrees(Rad)
     def reduce(self):
         if math.isnan(self.D):
-            return self.dms(0)
-        return self.dms(self.D - (360.0 * math.floor(self.D/360.0)))
+            return dms(0)
+        return dms(self.D - (360.0 * math.floor(self.D/360.0)))
     def reduceToRange(self, rng):
         if math.isnan(self.D):
             return
-        if rng == AngleRanges.MINUSPI_TO_PI:
+        if rng == dms.AngleRanges.MINUSPI_TO_PI:
             self.D -= (360.0 * math.floor((self.D + 180.0) / 360.0))
         else:
             self.D -= (360.0 * math.floor(self.D / 360.0))

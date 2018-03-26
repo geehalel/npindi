@@ -178,27 +178,27 @@ class INDIListener(QObject):
                 return
     def processSwitch(self, svp):
         for gd in self.devices:
-            if gd.getDeviceName() == svp.device:
+            if gd.getDeviceName() == svp.device.getDeviceName():
                 gd.processSwitch(svp)
                 break
     def processNumber(self, nvp):
         for gd in self.devices:
-            if gd.getDeviceName() == nvp.device:
+            if gd.getDeviceName() == nvp.device.getDeviceName():
                 gd.processNumber(nvp)
                 break
     def processText(self, tvp):
         for gd in self.devices:
-            if gd.getDeviceName() == tvp.device:
+            if gd.getDeviceName() == tvp.device.getDeviceName():
                 gd.processText(tvp)
                 break
     def processLight(self, lvp):
         for gd in self.devices:
-            if gd.getDeviceName() == lvp.device:
+            if gd.getDeviceName() == lvp.device.getDeviceName():
                 gd.processLight(lvp)
                 break
     def processBLOB(self, bp):
         for gd in self.devices:
-            if gd.getDeviceName() == bp.vp.device:
+            if gd.getDeviceName() == bp.vp.device.getDeviceName():
                 gd.processBLOB(bp)
                 break
     def processMessage(self, dp, messageID):

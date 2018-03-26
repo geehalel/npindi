@@ -55,19 +55,19 @@ class Telescope(ISD.DeviceDecorator):
     def getType(self):
         return self.dType
     def canControlTrack(self):
-        return m_canControlTrack
+        return self.m_canControlTrack
     def hasTrackModes(self):
-        return m_hasTrackModes
+        return self.m_hasTrackModes
     def hasCustomTrackRate(self):
-        return m_hasCustomTrackRates
+        return self.m_hasCustomTrackRates
     def isParked(self):
         return self.parkStatus == ParkStatus.PARK_PARKED
     def canCustomPark(self):
-        return m_hasCustomParking
+        return self.m_hasCustomParking
     def getParkStatus(self):
         return self.parkStatus
-    def hasAlignmantModel(self):
-        return m_hasAlignmentModel
+    def hasAlignmentModel(self):
+        return self.m_hasAlignmentModel
     def getEqCoords(self):
         ra, dec = None, None
         EqProp = self.baseDevice.getNumber('EQUATORIAL_EOD_COORD')
@@ -174,7 +174,7 @@ class Telescope(ISD.DeviceDecorator):
                 elif (svp.s == INDI.IPState.IPS_BUSY or svp.s == INDI.IPState.IPS_IDLE) and sp.s == INDI.ISState.ISS_OFF and self.parkStatus != ParkStatus.PARK_UNPARKED:
                     self.parkStatus = ParkStatus.PARK_UNPARKED
         elif svp.name == 'TELESCOPE_ABORT_MOTION':
-            if svp.s == INID.IPState.IPS_OK:
+            if svp.s == INDI.IPState.IPS_OK:
                 self.inCustomParking = False
         elif svp.name in {'TELESCOPE_MOTION_NS', 'TELESCOPE_MOTION_WE'}:
             manualMotionChanged = True
@@ -219,7 +219,7 @@ class Telescope(ISD.DeviceDecorator):
         EqProp = self.baseDevice.getNumber('EQUATORIAL_EOD_COORD')
         if EqProp is None:
             return False
-        return EqProp.s == INDI.IPState.IPS_OK
+        return EqProp.s == INDI.IPState.IPS_BUSY
     def isInMotion(self):
         return self.isSlewing() or self.inManualMotion
     def doPulse(self, guidedir, msecs):
@@ -272,7 +272,7 @@ class Telescope(ISD.DeviceDecorator):
             EqProp = self.baseDevice.getNumber('EQUATORIAL_COORD')
             if EqProp is not None:
                 useJ2000 = True
-        HorProp = self.getBaseDevice.getNumber('HORIZONTAL_COORD')
+        HorProp = self.baseDevice.getNumber('HORIZONTAL_COORD')
         if EqProp is not None and EqProp.p == INDI.IPerm.IP_RO:
             EqProp = None
         if HorProp is not None and HorProp.p == INDI.IPerm.IP_RO:
@@ -301,7 +301,7 @@ class Telescope(ISD.DeviceDecorator):
             currentAlt = AltEle.value
         if EqProp is None and HorProp is None:
             return False
-        targetAlt = ScopeTarget.altrefracted().Degrees()
+        targetAlt = ScopeTarget.altRefracted().Degrees()
         if self.minAlt != -1.0 and self.maxAlt != -1.0:
             if targetAlt < self.minAlt or targetAlt > self.maxAlt:
                 return False
@@ -379,7 +379,7 @@ class Telescope(ISD.DeviceDecorator):
         parkSP = self.baseDevice.getSwitch('TELESCOPE_PARK')
         if parkSP is None:
             return False
-        parkSW = INDI.IUFindSwitch(motionSP, 'PARK')
+        parkSW = INDI.IUFindSwitch(parkSP, 'PARK')
         if parkSW is None:
             return False
         INDI.IUResetSwitch(parkSP)
@@ -391,7 +391,7 @@ class Telescope(ISD.DeviceDecorator):
         parkSP = self.baseDevice.getSwitch('TELESCOPE_PARK')
         if parkSP is None:
             return False
-        parkSW = INDI.IUFindSwitch(motionSP, 'UNPARK')
+        parkSW = INDI.IUFindSwitch(parkSP, 'UNPARK')
         if parkSW is None:
             return False
         INDI.IUResetSwitch(parkSP)
@@ -432,7 +432,7 @@ class Telescope(ISD.DeviceDecorator):
             return True
         INDI.IUResetSwitch(motionSP)
         if cmd == TelescopeMotionCommand.MOTION_START:
-            if dir == TelescopeMotionNS.MOTION_WEST:
+            if dir == TelescopeMotionWE.MOTION_WEST:
                 motionWest.s = INDI.ISState.ISS_ON
             else:
                 motionEast.s = INDI.ISState.ISS_ON

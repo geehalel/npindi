@@ -71,7 +71,7 @@ class INDIDataType(enum.Enum):
     DATA_CCDPREVIEW = 2
     DATA_ASCII = 3
     DATA_OTHER = 4
-class GuideDirection:
+class GuideDirection(enum.Enum):
     NO_DIR = 0
     RA_INC_DIR = 1
     RA_DEC_DIR = 2
@@ -160,7 +160,7 @@ class Options(QSettings):
         super().__init__(parent=parent)
         self.beginGroup('npindi')
         self.setValue('useComputerSource', True)
-        self.setValue('useDeviceSource', True)
+        self.setValue('useDeviceSource', False)
         self.setValue('useTimeUpdate', True)
         self.setValue('useGeographicUpdate', True)
         self.setValue('useRefraction', True)

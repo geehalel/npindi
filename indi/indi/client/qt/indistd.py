@@ -191,10 +191,10 @@ class ISD:
             self.numberUpdated.emit(prop)
         def processText(self, prop):
             if Options.Instance().value('npindi/useDeviceSource') and prop.name == 'TIME_UTC' and prop.s == INDI.IPState.IPS_OK:
-                tp = IUFindText(prop, 'UTC')
+                tp = INDI.IUFindText(prop, 'UTC')
                 if tp is None: return
                 indiDateTime = QDateTime.fromString(tp.text, Qt.ISODate)
-                tp = IUFindText(prop, 'OFFSET')
+                tp = INDI.IUFindText(prop, 'OFFSET')
                 if tp is None: return
                 utcOffset = float(tp.text)
                 QLoggingCategory.qCInfo(QLoggingCategory.NPINDI, 'Setting UTC time from device: '+self.getDeviceName() + indiDateTime.toString())
@@ -245,7 +245,31 @@ class ISD:
                 # TODO imageviewer.py see PySide example
             self.BLOBUpdated.emit(bp)
         def setConfig(self, tConfig):
-            pass
+            svp = self.baseDevice.getSwitch('CONFIG_PROCESS')
+            if svp is None:
+                return False
+            sp = None
+            INDI.IUResetSwitch(svp)
+            if tConfig == INDIConfig.LOAD_LAST_CONFIG:
+                sp = INDI.IUFindSwitch(svp, 'CONFIG_LOAD')
+                if sp is None:
+                    return False
+                INDI.IUResetSwitch(svp)
+                sp.s = INDI.ISState.ISS_ON
+            elif tConfig == INDIConfig.SAVE_CONFIG:
+                sp = INDI.IUFindSwitch(svp, 'CONFIG_SAVE')
+                if sp is None:
+                    return False
+                INDI.IUResetSwitch(svp)
+                sp.s = INDI.ISState.ISS_ON
+            elif tConfig == INDIConfig.LOAD_DEFAULT_CONFIG:
+                sp = INDI.IUFindSwitch(svp, 'CONFIG_DEFAULT')
+                if sp is None:
+                    return False
+                INDI.IUResetSwitch(svp)
+                sp.s = INDI.ISState.ISS_ON
+            self.clientManager.send_new_property(svp)
+            return True
         def createDeviceInit(self):
             pass
         def updateTime(self):
@@ -281,13 +305,38 @@ class ISD:
             return self.runCommand(DeviceCommand.INDI_DISCONNECT)
         def runCommand( self, command, ptr = None):
             if command == DeviceCommand.INDI_CONNECT:
-                self.clientManager.connectDevice(self.baseDevice.getDeviceName())
+                self.clientManager.connect_device(self.baseDevice.getDeviceName())
             elif command == DeviceCommand.INDI_DISCONNECT:
-                self.clientManager.disconnectDevice(self.baseDevice.getDeviceName())
+                self.clientManager.disconnect_device(self.baseDevice.getDeviceName())
             else:
                 pass # TO continue
         def setProperty(self, setPropCommand):
-            pass
+            if not isinstance(setPropCommand, GDSetCommand):
+                raise ValueError('setProperty: setPropCommand is not a GDSetCommand')
+            pp = self.baseDevice.getProperty(setPropCommand.indiProperty)
+            if pp is None:
+                return False
+            if setPropCommand.propType == INDI.INDI_PROPERTY_TYPE.INDI_SWITCH:
+                sp = INDI.IUFindSwitch(pp, setPropCommand.indiElement)
+                if sp is None:
+                    return False
+                if pp.r == INDI.ISRule.ISR_1OFMANY or pp.r == INDI.ISRule.ISR_ATMOST1:
+                    INDI.IUResetSwitch(pp)
+                sp.s = INDI.ISState.ISS_OFF if setPropCommand.elementValue == 0 else INDI.ISState.ISS_ON
+                self.clientManager.send_new_property(pp)
+                return True
+            elif setPropCommand.propType == INDI.INDI_PROPERTY_TYPE.INDI_NUMBER:
+                np = INDI.IUFindNumber(pp, setPropCommand.indiElement)
+                if np is None:
+                    return False
+                value = float(setPropCommand.elementValue)
+                if np.value == value:
+                    return True
+                np.value = value
+                self.clientManager.send_new_property(pp)
+                return True
+            # TODO other property types
+            return True
         def resetWatchdog(self):
             pass
     class DeviceDecorator(GDInterface):
