@@ -88,7 +88,16 @@ class DeviceCommand(enum.Enum):
     INDI_SET_FILTER = 7
     INDI_SET_ROTATOR_TICKS = 8
     INDI_SET_ROTATOR_ANGLE = 9
-
+class CCDFrameType(enum.Enum):
+    FRAME_LIGHT = 0
+    FRAME_BIAS = 1
+    FRAME_DARK = 2
+    FRAME_FLAT = 3
+class CCDBinType(enum.Enum):
+    SINGLE_BIN = 0
+    DOUBLE_BIN = 1
+    TRIPLE_BIN = 2
+    QUADRUPLE_BIN = 3
 ##### npindi specific stuff #####
 from PyQt5 import QtCore
 # PyQt5 lacks QLoggingCategory
