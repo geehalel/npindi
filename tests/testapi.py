@@ -14,7 +14,7 @@ from indi.client.qt.inditelescope import Telescope
 import inspect
 import sys
 class APIHandler(QtCore.QObject):
-    __modules = ['indi.INDI', 'indi.client.qt.indicommon', 'indi.client.qt.inditelescope' ]
+    __modules = ['indi.INDI', 'indi.client.qt.indicommon', 'indi.client.qt.inditelescope', 'indi.client.qt.indiccd' ]
     #__modules = ['indi.client.qt.inditelescope'] # use first level class search here
     __text_types = ['int', 'float', 'str']
     __enum_types = list()
@@ -33,10 +33,10 @@ class APIHandler(QtCore.QObject):
                 if issubclass(m[1], enum.Enum):
                     if m not in APIHandler.__enum_types:
                         APIHandler.__enum_types.append(m)
-                # else: # Check first level enums in class
-                #     for c in inspect.getmembers(m[1], inspect.isclass):
-                #         if issubclass(c[1], enum.Enum):
-                #             APIHandler.__enum_types.append(c)
+                else: # Check first level enums in class
+                    for c in inspect.getmembers(m[1], inspect.isclass):
+                        if issubclass(c[1], enum.Enum) and not c in APIHandler.__enum_types:
+                            APIHandler.__enum_types.append(c)
         APIHandler.__enum_types.sort()
     def buildUI(self):
         self.ui = QGroupBox(self.gd_device.getDeviceName())
@@ -242,7 +242,7 @@ class MainWindow(QMainWindow):
         #self.centrallayout.addStretch(1)
         #self.centrallayout.addSpacerItem(self.centralSpacer)
         INDIListener.Instance().newTelescope.connect(self.addAPIHandler)
-
+        INDIListener.Instance().newCCD.connect(self.addAPIHandler)
         self.setWindowTitle('Test PyQt INDI API')
         self.show()
     def closeEvent(self, event):
