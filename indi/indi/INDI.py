@@ -184,7 +184,7 @@ class INumber:
         self.max=maxvalue
         self.step=stepvalue
         self.value=value
-        self.tvp=parent
+        self.nvp=parent
         self.aux0=aux0
         self.aux1=aux1
     def __str__(self):

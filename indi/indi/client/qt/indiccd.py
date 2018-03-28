@@ -166,7 +166,7 @@ class CCDChip:
             expProp = self.baseDevice.getNumber('GUIDER_EXPOSURE')
         if expProp is None:
             return False
-        expProp.np['CCD_EXPOSURE_VALUE'].value = exposure
+        expProp.vp['CCD_EXPOSURE_VALUE'].value = exposure
         self.clientManager.send_new_property(expProp)
         return True
     def abortExposure(self):
@@ -400,7 +400,7 @@ class CCD(ISD.DeviceDecorator):
         self.ISOMode = enable
     def setSeqPrefix(self, preFix):
         self.seqPrefix = preFix
-    def setNextSequencID(self, count):
+    def setNextSequenceID(self, count):
         self.nextSequenceID = count
     def setFilter(self, newFilter):
         self.filter = newFilter
@@ -484,7 +484,7 @@ class CCD(ISD.DeviceDecorator):
             self.HasCooler = True
             np = INDI.IUFindNumber(nvp, 'CCD_TEMPERATURE_VALUE')
             if np is not None:
-                self.newTemperatureValue.emit(self.primaryChip, np.value)
+                self.newTemperatureValue.emit(np.value)
         elif pname == 'GUIDER_EXPOSURE':
             np = INDI.IUFindNumber(nvp, 'GUIDER_EXPOSURE_VALUE')
             if np is not None:
@@ -495,13 +495,13 @@ class CCD(ISD.DeviceDecorator):
             if nvp.s == INDI.IPState.IPS_ALERT:
                 self.newGuideStarData(self.primaryChip, -1.0, -1.0, -1.0)
             else:
-                np = IUFindNumber(nvp, 'GUIDESTAR_X')
+                np = INDI.IUFindNumber(nvp, 'GUIDESTAR_X')
                 if np is not None:
                     dx = np.value
-                np = IUFindNumber(nvp, 'GUIDESTAR_Y')
+                np = INDI.IUFindNumber(nvp, 'GUIDESTAR_Y')
                 if np is not None:
                     dy = np.value
-                np = IUFindNumber(nvp, 'GUIDESTAR_FIT')
+                np = INDI.IUFindNumber(nvp, 'GUIDESTAR_FIT')
                 if np is not None:
                     fit = np.value
                 if dx >= 0.0 and dy >= 0.0 and fit >= 0.0:
@@ -512,13 +512,13 @@ class CCD(ISD.DeviceDecorator):
             if nvp.s == INDI.IPState.IPS_ALERT:
                 self.newGuideStarData(self.guideChip, -1.0, -1.0, -1.0)
             else:
-                np = IUFindNumber(nvp, 'GUIDESTAR_X')
+                np = INDI.IUFindNumber(nvp, 'GUIDESTAR_X')
                 if np is not None:
                     dx = np.value
-                np = IUFindNumber(nvp, 'GUIDESTAR_Y')
+                np = INDI.IUFindNumber(nvp, 'GUIDESTAR_Y')
                 if np is not None:
                     dy = np.value
-                np = IUFindNumber(nvp, 'GUIDESTAR_FIT')
+                np = INDI.IUFindNumber(nvp, 'GUIDESTAR_FIT')
                 if np is not None:
                     fit = np.value
                 if dx >= 0.0 and dy >= 0.0 and fit >= 0.0:
@@ -684,8 +684,8 @@ class CCD(ISD.DeviceDecorator):
         coolerSP = self.baseDevice.getSwitch('CCD_COOLER')
         if coolerSP is None:
             return False
-        coolerSP.vp['COOLER_ON'] = INDI.ISState.ISS_ON if enable else INDI.ISState.ISS_OFF
-        coolerSP.vp['COOLER_OFF'] = INDI.ISState.ISS_OFF if enable else INDI.ISState.ISS_ON
+        coolerSP.vp['COOLER_ON'].s = INDI.ISState.ISS_ON if enable else INDI.ISState.ISS_OFF
+        coolerSP.vp['COOLER_OFF'].s = INDI.ISState.ISS_OFF if enable else INDI.ISState.ISS_ON
         self.clientManager.send_new_property(coolerSP)
         return True
     def getChip(self, cType):
@@ -696,3 +696,341 @@ class CCD(ISD.DeviceDecorator):
         elif cType == CCDChip.ChipType.GUIDE_CCD:
             return self.guideChip
         return None
+    def setRapidGuide(self, targetChip, enable):
+        rapidSP = None
+        enableS = None
+        if targetChip == self.primaryChip:
+            rapidSP = self.baseDevice.getSwitch('CCD_RAPID_GUIDE')
+        else:
+            rapidSP = self.baseDevice.getSwitch('GUIDER_RAPID_GUIDE')
+        if rapidSP is None:
+            return False
+        enableS = INDI.IUFindSwitch(rapidSP, 'ENABLE')
+        if enableS is None:
+            return False
+        if (enable and enableS.s == INDI.ISState.ISS_ON) or (not enable and enableS.s == INDI.ISState.ISS_OFF):
+            return True
+        INDI.IUResetSwitch(rapidSP)
+        rapidSP.vp['ENABLE'].s = INDI.ISState.ISS_ON if enable else INDI.ISState.ISS_OFF
+        rapidSP.vp['DISABLE'].s = INDI.ISState.ISS_OFF if enable else INDI.ISState.ISS_ON
+        self.clientManager.send_new_property(rapidSP)
+        return True
+    def configureRapidGuide(self, targetChip, autoLoop, sendImage, showMarker):
+        rapidSP = None
+        autoLoopS = sendImageS = showMarkerS = None
+        if targetChip == self.primaryChip:
+            rapidSP = self.baseDevice.getSwitch('CCD_RAPID_GUIDE_SETUP')
+        else:
+            rapidSP = self.baseDevice.getSwitch('GUIDER_RAPID_GUIDE_SETUP')
+        if rapidSP is None:
+            return False
+        autoLoopS = INDI.IUFindSwitch(rapidSP, 'AUTO_LOOP')
+        sendImageS = INDI.IUFindSwitch(rapidSP, 'SEND_IMAGE')
+        showMarkerS = INDI.IUFindSwitch(rapidSP, 'SHOW_MARKER')
+        if autoLoopS is None or sendImageS is None or showMarkerS is None:
+            return False
+        if ((autoLoop and autoLoopS.s == INDI.ISState.ISS_ON) or (not autoLoop and autoLoopS.s == INDI.ISState.ISS_OFF)) and \
+            ((sendImage and sendImageS.s == INDI.ISState.ISS_ON) or (not sendImage and sendImageS.s == INDI.ISState.ISS_OFF)) and \
+            ((showMarker and showMarkerS.s == INDI.ISState.ISS_ON) or (not showMarker and showMarkerS.s == INDI.ISState.ISS_OFF)):
+            return True
+        autoLoopS.s = INDI.ISState.ISS_ON if autoLoop else INDI.ISState.ISS_OFF
+        sendImageS.s = INDI.ISState.ISS_ON if sendImage else INDI.ISState.ISS_OFF
+        showMarkerS.s = INDI.ISState.ISS_ON if showMarker else INDI.ISState.ISS_OFF
+        self.clientManager.send_new_property(rapidSP)
+        return True
+    def updateUploadSettings(self, remoteDir):
+        filename = self.seqPrefix + ('' if not self.seqPrefix else '_') + 'XXX'
+        uploadSettingsTP = None
+        uploadT = None
+        uploadSettingsTP = self.baseDevice.getText('UPLOAD_SETTINGS')
+        if uploadSettingsTP is not None:
+            uploadT = INDI.IUFindText(uploadSettingsTP, 'UPLOAD_DIR')
+            if uploadT is not None and self.remoteDir:
+                uploadT.text = self.remoteDir
+            uploadT = INDI.IUFindText(uploadSettingsTP, 'UPLOAD_PREFIX')
+            if uploadT is not None:
+                uploadT.text = filename
+            self.clientManager.send_new_property(uploadSettingsTP)
+    def getUploadMode(self):
+        uploadModeSP = self.baseDevice.getSwitch('UPLOAD_MODE')
+        if uploadModeSP is None:
+            QLoggingCategory.qCWarning(QLoggingCategory.NPIND, 'NO UPLOAD_MODE in CCD driver. Please update driver to INDI compliant CCD driver.')
+            return CCD.UploadMode.UPLOAD_CLIENT
+        if uploadModeSP:
+            modeS = INDI.IUFindSwitch(uploadModeSP, 'UPLOAD_CLIENT')
+            if modeS is not None and modeS.s == INDI.ISState.ISS_ON:
+                return CCD .UploadMode.UPLOAD_CLIENT
+            modeS = INDI.IUFindSwitch(uploadModeSP, 'UPLOAD_LOCAL')
+            if modeS is not None and modeS.s == INDI.ISState.ISS_ON:
+                return CCD .UploadMode.UPLOAD_LOCAL
+            modeS = INDI.IUFindSwitch(uploadModeSP, 'UPLOAD_BOTH')
+            if modeS is not None and modeS.s == INDI.ISState.ISS_ON:
+                return CCD .UploadMode.UPLOAD_BOTH
+        return CCD.UploadMode.UPLOAD_CLIENT
+    def setUploadMode(self, mode):
+        if not isinstance(mode, CCD.UploadMode):
+            raise ValueError('setUploadMode: parameter should be a CCD.UploadMode')
+        uploadModeSP = self.baseDevice.getSwitch('UPLOAD_MODE')
+        if uploadModeSP is None:
+            QLoggingCategory.qCWarning(QLoggingCategory.NPIND, 'NO UPLOAD_MODE in CCD driver. Please update driver to INDI compliant CCD driver.')
+            return False
+        if mode == CCD.UploadMode.UPLOAD_CLIENT:
+            modeS = INDI.IUFindSwitch(uploadModeSP, 'UPLOAD_CLIENT')
+            if modeS is None:
+                return False
+            if modeS.s == INDI.ISState.ISS_ON:
+                return True
+        elif mode == CCD.UploadMode.UPLOAD_BOTH:
+            modeS = INDI.IUFindSwitch(uploadModeSP, 'UPLOAD_BOTH')
+            if modeS is None:
+                return False
+            if modeS.s == INDI.ISState.ISS_ON:
+                return True
+        elif mode == CCD.UploadMode.UPLOAD_LOCAL:
+            modeS = INDI.IUFindSwitch(uploadModeSP, 'UPLOAD_LOCAL')
+            if modeS is None:
+                return False
+            if modeS.s == INDI.ISState.ISS_ON:
+                return True
+        INDI.IUResetSwitch(uploadModeSP)
+        modeS.s = INDI.ISState.ISS_ON
+        self.clientManager.send_new_property(uploadModeSP)
+        return True
+    def getTemperature(self):
+        if not self.HasCooler:
+            return None
+        temperatureNP = self.baseDevice.getNumber('CCD_TEMPERATURE')
+        if temperatureNP is None:
+            return None
+        return temperatureNP.vp['CCD_TEMPERATURE_VALUE'].value
+    def setTemperature(self, value):
+        nvp = self.baseDevice.getNumber('CCD_TEMPERATURE')
+        if nvp is None:
+            return False
+        np = INDI.IUFindNumber(nvp, 'CCD_TEMPERATURE_VALUE')
+        if np is None:
+            return False
+        np.value = value
+        self.clientManager.send_new_property(nvp)
+        return True
+    def setTransferFormat(self, tFormat):
+        if not isinstance(tFormat, CCD.TransferFormat):
+            raise ValueError('setTransferFormat: parameter should a CCD.TransferFormat')
+        if tFormat == self.transferFormat:
+            return True
+        svp = self.baseDevice.getSwitch('CCD_TRANSFER_FORMAT')
+        if svp is None:
+            return False
+        formatFITS = INDI.IUFindSwitch('FORMAT_FITS')
+        formatNative = INDI.IUFindSwitch('FORMAT_NATIVE')
+        if formatFITS is None or formatNative is None:
+            return False
+        self.transferFormat = tFormat
+        formatFITS.s = INDI.ISState.ISS_ON if self.transferFormat == CCD.TransferFormat.FORMAT_FITS else INDI.ISState.ISS_OFF
+        formatNative.s = INDI.ISState.ISS_ON if self.transferFormat == CCD.TransferFormat.FORMAT_NATIVE else INDI.ISState.ISS_OFF
+        self.clientManager.send_new_property(svp)
+        return True
+    def setTelescopeType(self, tType):
+        if not isinstance(tType, CCD.TelescopeType):
+            raise ValueError('setTelescopeType: parameter should a CCD.TelescopeType')
+        if tType == self.telescopeType:
+            return True
+        svp = self.baseDevice.getSwitch('TELESCOPE_TYPE')
+        if svp is None:
+            return False
+        typePrimary = INDI.IUFindSwitch('TELESCOPE_PRIMARY')
+        typeGuide = INDI.IUFindSwitch('TELESCOPE_GUIDE')
+        if typePrimary is None or typeGuide is None:
+            return False
+        self.telescopeType = tType
+        typePrimary.s = INDI.ISState.ISS_ON if self.telescopeType == CCD.TelescopeType.TELESCOPE_PRIMARY else INDI.ISState.ISS_OFF
+        typeGuide.s = INDI.ISState.ISS_ON if self.transferFormat == CCD.TelescopeType.TELESCOPE_GUIDE else INDI.ISState.ISS_OFF
+        self.clientManager.send_new_property(svp)
+        self.setConfig(INDIConfig.SAVE_CONFIG)
+        return True
+    def setVideoStreamEnabled(self, enable):
+        if not self.HasVideoStream:
+            return False
+        svp = self.baseDevice.getSwitch('CCD_VIDEO_STREAM')
+        if svp is None:
+            return False
+        if (enable and svp.vp['STREAM_ON'].s == INDI.ISState.ISS_ON) or (not enable and svp.vp['STREAM_OFF'].s == INDI.ISState.ISS_ON):
+            return True
+        svp.vp['STREAM_ON'].s = INDI.ISState.ISS_ON if enable else INDI.ISState.ISS_OFF
+        svp.vp['STREAM_OFF'].s = INDI.ISState.ISS_OFF if enable else INDI.ISState.ISS_ON
+        self.clientManager.send_new_property(svp)
+        return True
+    def resetStreamingFrame(self):
+        frameProp = self.baseDevice.getNumber('CCD_STREAM_FRAME')
+        if frameProp is None:
+            return False
+        xarg = INDI.IUFindNumber(frameProp, 'X')
+        yarg = INDI.IUFindNumber(frameProp, 'Y')
+        warg = INDI.IUFindNumber(frameProp, 'WIDTH')
+        harg = INDI.IUFindNumber(frameProp, 'HEIGHT')
+        if xarg is not None and yarg is not None and warg is not None and harg is not None:
+            if xarg.value == xarg.min and yarg.value == yarg.min and warg.value == warg.max and harg.value == harg.max:
+                return False # check JM
+            xarg.value = xarg.min
+            yarg.value = yarg.min
+            warg.value = warg.max
+            harg.value = harg.max
+            self.clientManager.send_new_property(frameProp)
+            return True
+        return False
+    def setStreamingFrame(self, x, y, w, h):
+        frameProp = self.baseDevice.getNumber('CCD_STREAM_FRAME')
+        if frameProp is None:
+            return False
+        xarg = INDI.IUFindNumber(frameProp, 'X')
+        yarg = INDI.IUFindNumber(frameProp, 'Y')
+        warg = INDI.IUFindNumber(frameProp, 'WIDTH')
+        harg = INDI.IUFindNumber(frameProp, 'HEIGHT')
+        if xarg is not None and yarg is not None and warg is not None and harg is not None:
+            if xarg.value == x and yarg.value == y and warg.value == w and harg.value == h:
+                return True
+            xarg.value = max(xarg.min, min(x + xarg.value, xarg.max))
+            yarg.value = max(yarg.min, min(y + yarg.value, yarg.max))
+            warg.value = max(warg.min, min(w, warg.max))
+            harg.value = max(harg.min, min(h, harg.max))
+            self.clientManager.send_new_property(frameProp)
+            return True
+        return False
+    def isStreamingEnabled(self):
+        if not self.HasVideoStream:
+            return False
+        svp = self.baseDevice.getSwitch('CCD_VIDEO_STREAM')
+        if svp is None:
+            return False
+        return svp.vp['STREAM_ON'].s == INDI.ISState.ISS_ON
+    def setSERNameDirectory(self, filename, directory):
+        tvp = self.baseDevice.getText('RECORD_FILE')
+        if tvp is None:
+            return False
+        filenameT = INDI.IUFindText(tvp, 'RECORD_FILE_NAME')
+        dirT = INDI.IUFindText(tvp, 'RECORD_FILE_DIR')
+        if filenameT is None or dirT is None:
+            return False
+        filenameT.text = filename.encode(encoding='ascii')
+        dirT.text = directory.encode(encoding='ascii')
+        self.clientManager.send_new_property(tvp)
+        return True
+    def getSERNameDirectory(self):
+        tvp = self.baseDevice.getText('RECORD_FILE')
+        if tvp is None:
+            return None
+        filenameT = INDI.IUFindText(tvp, 'RECORD_FILE_NAME')
+        dirT = INDI.IUFindText(tvp, 'RECORD_FILE_DIR')
+        if filenameT is None or dirT is None:
+            return None
+        filename = filenameT.text
+        directory = dirT.text
+        return (filename, directory)
+    def startRecording(self):
+        svp = self.baseDevice.getSwitch('RECORD_STREAM')
+        if svp is None:
+            return False
+        recordON = INDI.IUFindSwitch(svp, 'RECORD_ON')
+        if recordON is None:
+            return False
+        if recordON.s == INDI.ISState.ISS_ON:
+            return True
+        INDI.IUResetSwitch(svp)
+        recordON.s = INDI.ISState.ISS_ON
+        self.clientManager.send_new_property(svp)
+        return True
+    def startDurationRecording(self, duration):
+        nvp = self.baseDevice.getNumber('RECORD_OPTIONS')
+        if nvp is None:
+            return False
+        durationN = INDI.IUFindNumber(nvp, 'RECORD_DURATION')
+        if durationN is None:
+            return False
+        svp = self.baseDevice.getSwitch('RECORD_STREAM')
+        if svp is None:
+            return False
+        recordON = INDI.IUFindSwitch(svp, 'RECORD_DURATION_ON')
+        if recordON is None:
+            return False
+        if recordON.s == INDI.ISState.ISS_ON:
+            return True
+        durationN.value = duration
+        self.clientManager.send_new_property(nvp)
+        INDI.IUResetSwitch(svp)
+        recordON.s = INDI.ISState.ISS_ON
+        self.clientManager.send_new_property(svp)
+        return True
+    def startFramesRecording(self, frames):
+        nvp = self.baseDevice.getNumber('RECORD_OPTIONS')
+        if nvp is None:
+            return False
+        frameN = INDI.IUFindNumber(nvp, 'RECORD_FRAME_TOTAL')
+        if frameN is None:
+            return False
+        svp = self.baseDevice.getSwitch('RECORD_STREAM')
+        if svp is None:
+            return False
+        recordON = INDI.IUFindSwitch(svp, 'RECORD_FRAME_ON')
+        if recordON is None:
+            return False
+        if recordON.s == INDI.ISState.ISS_ON:
+            return True
+        frameN.value = frames
+        self.clientManager.send_new_property(nvp)
+        INDI.IUResetSwitch(svp)
+        recordON.s = INDI.ISState.ISS_ON
+        self.clientManager.send_new_property(svp)
+        return True
+    def stopRecording(self):
+        svp = self.baseDevice.getSwitch('RECORD_STREAM')
+        if svp is None:
+            return False
+        recordOFF = INDI.IUFindSwitch(svp, 'RECORD_OFF')
+        if recordOFF is None:
+            return False
+        if recordOFF.s == INDI.ISState.ISS_ON:
+            return True
+        INDI.IUResetSwitch(svp)
+        recordOFF.s = INDI.ISState.ISS_ON
+        self.clientManager.send_new_property(svp)
+        return True
+    def setGain(self, value):
+        if self.gainN is None:
+            return False
+        self.gainN.value = value
+        self.clientManager.send_new_elem(self.gainN.nvp, self.gainN)
+        return True
+    def getGain(self):
+        if self.gainN is None:
+            return None
+        return self.gainN.value
+    def getGainMinMaxStep(self):
+        if self.gainN is None:
+            return None
+        return (self.gainN.min, self.gainN.max, self.gainN.step)
+    def isBLOBEnabled(self):
+        return self.clientManager.get_blob_mode(self.getDeviceName(), 'CCD1') != INDI.BLOBHandling.B_NEVER
+    def setBLOBEnabled(self, enable):
+        if enable:
+            self.clientManager.set_blob_mode(INDI.BLOBHandling.B_ALSO, self.baseDevice.getDeviceName(), 'CCD1')
+            self.clientManager.set_blob_mode(INDI.BLOBHandling.B_ALSO, self.baseDevice.getDeviceName(), 'CCD2')
+        else:
+            self.clientManager.set_blob_mode(INDI.BLOBHandling.B_NEVER, self.baseDevice.getDeviceName(), 'CCD1')
+            self.clientManager.set_blob_mode(INDI.BLOBHandling.B_NEVER, self.baseDevice.getDeviceName(), 'CCD2')
+        return True
+    def setExposureLoopingEnabled(self, enable):
+        self.IsLooping = enable
+        svp = self.baseDevice.getSwitch('CCD_EXPOSURE_LOOP')
+        if svp is None:
+            return False
+        svp.vp['LOOP_ON'].s = INDI.ISState.ISS_ON if enable else INDI.ISState.ISS_OFF
+        svp.vp['LOOP_OFF'].s = INDI.ISState.ISS_OFF if enable else INDI.ISState.ISS_ON
+        self.clientManager.send_new_property(svp)
+        return True
+    def setExposureLoopCount(self, count):
+        nvp = self.baseDevice.getNumber('CCD_EXPOSURE_LOOP_COUNT')
+        if nvp is None:
+            return False
+        nvp.vp['FRAMES'].value = count
+        self.clientManager.send_new_property(nvp)
+        return True

@@ -16,7 +16,7 @@ import sys
 class APIHandler(QtCore.QObject):
     __modules = ['indi.INDI', 'indi.client.qt.indicommon', 'indi.client.qt.inditelescope', 'indi.client.qt.indiccd' ]
     #__modules = ['indi.client.qt.inditelescope'] # use first level class search here
-    __text_types = ['int', 'float', 'str']
+    __text_types = ['int', 'float', 'str', 'bool']
     __enum_types = list()
     def __init__(self, gd_device):
         super().__init__()
@@ -37,7 +37,7 @@ class APIHandler(QtCore.QObject):
                     for c in inspect.getmembers(m[1], inspect.isclass):
                         if issubclass(c[1], enum.Enum) and not c in APIHandler.__enum_types:
                             APIHandler.__enum_types.append(c)
-        APIHandler.__enum_types.sort()
+        APIHandler.__enum_types.sort(key=lambda m: m[1].__qualname__)
     def buildUI(self):
         self.ui = QGroupBox(self.gd_device.getDeviceName())
         #self.ui.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
@@ -89,7 +89,7 @@ class APIHandler(QtCore.QObject):
                 self.genericMethods.append(m[1])
             else:
                 self.otherMethods.append(m[1])
-    def setparamtext(self, pvalues, param, ptype, pedit):
+    def setparamtext(self, pvalues, param, ptype, pedit, pboolvalue):
         value=None
         thetype = ptype.currentText()
         textvalue = pedit.text()
@@ -101,6 +101,8 @@ class APIHandler(QtCore.QObject):
                 value =  float(textvalue)
             elif thetype == 'str':
                 value = textvalue
+            elif thetype == 'bool':
+                value = True if pboolvalue.currentIndex() == 0 else False
         except:
             value = ''
         pvalues[param.name] = value
@@ -115,10 +117,15 @@ class APIHandler(QtCore.QObject):
                 break
             i = i + 1
         pvalues[param.name] = value
-    def switchparamUI(self, index, ptype, pedit, pvalue, pvalues, param):
+    def switchparamUI(self, index, ptype, pedit, pboolvalue, pvalue, pvalues, param):
         if index < len(APIHandler.__text_types):
             pvalue.hide()
-            pedit.show()
+            if index == APIHandler.__text_types.index('bool'):
+                pedit.hide()
+                pboolvalue.show()
+            else:
+                pboolvalue.hide()
+                pedit.show()
         else:
             pvalue.clear()
             theenum = APIHandler.__enum_types[index-len(APIHandler.__text_types)][1]
@@ -133,16 +140,20 @@ class APIHandler(QtCore.QObject):
         pname = QLabel(param.name)
         ptype= QComboBox(ui)
         pvalue = QComboBox(ui)
+        pboolvalue = QComboBox(ui)
+        pboolvalue.addItems(['True', 'False'])
         ptype.addItems(APIHandler.__text_types)
-        ptype.addItems([m[0] for m in APIHandler.__enum_types])
+        ptype.addItems([m[1].__qualname__ for m in APIHandler.__enum_types])
         pedit = QLineEdit(ui)
         layout.addWidget(pname)
         layout.addWidget(ptype)
         layout.addWidget(pedit)
         layout.addWidget(pvalue)
+        layout.addWidget(pboolvalue)
+        pboolvalue.hide()
         pvalue.hide()
-        pedit.editingFinished.connect(lambda : self.setparamtext(pvalues, param, ptype, pedit))
-        ptype.activated.connect(lambda index: self.switchparamUI(index, ptype, pedit, pvalue, pvalues, param))
+        pedit.editingFinished.connect(lambda : self.setparamtext(pvalues, param, ptype, pedit, pboolvalue))
+        ptype.activated.connect(lambda index: self.switchparamUI(index, ptype, pedit, pboolvalue, pvalue, pvalues, param))
         pvalue.activated.connect(lambda index: self.setparamenum(index, pvalues, param, ptype, pvalue))
         return ui
     @QtCore.pyqtSlot(int)
