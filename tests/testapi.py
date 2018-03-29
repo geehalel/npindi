@@ -13,6 +13,7 @@ from indi.client.qt.inditelescope import Telescope
 # used for introspection in APIHandler
 import inspect
 import sys
+import html
 class APIHandler(QtCore.QObject):
     __modules = ['indi.INDI', 'indi.client.qt.indicommon', 'indi.client.qt.inditelescope', 'indi.client.qt.indiccd' ]
     #__modules = ['indi.client.qt.inditelescope'] # use first level class search here
@@ -23,6 +24,22 @@ class APIHandler(QtCore.QObject):
         self.gd_device = gd_device
         QLoggingCategory.qCDebug(QLoggingCategory.NPINDI,' API handler; new device '+ self.gd_device.getDeviceName())
         self.ui = None
+        self.signals = list()
+        for i in range(self.gd_device.metaObject().methodCount()):
+            m = self.gd_device.metaObject().method(i)
+            if m.methodType() == QtCore.QMetaMethod.Signal:
+                self.signals.append(m)
+        # for name in dir(self.gd_device):
+        #     obj = getattr(self.gd_device, name)
+        #     #print('Name', name, obj.__class__, isinstance(obj, QtCore.pyqtBoundSignal))
+        #     if isinstance(obj, QtCore.pyqtBoundSignal):
+        #         self.signals.append(obj)
+        # #print('Signals for', self.gd_device.getDeviceName())
+        for m in self.signals:
+        #     print(s, s.signal)
+            #print(bytearray(m.name()).decode('ascii'))
+            s = getattr(self.gd_device, bytearray(m.name()).decode('ascii'))
+            s.connect(self.catchSignals)
     @staticmethod
     def buildEnumTypes():
         import importlib
@@ -45,12 +62,16 @@ class APIHandler(QtCore.QObject):
         self.uiFrame=QFrame(self.ui)
         #self.uiFrame.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.uiLayout = QVBoxLayout(self.uiFrame)
+        self.DHBox = QHBoxLayout()
+        self.uiLayout.addLayout(self.DHBox)
+        self.labeldevice = QLabel('No device found', self.ui)
+        self.labeldevice.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum)
+        self.DHBox.addWidget(self.labeldevice)
         self.MHBox = QHBoxLayout()
         self.uiLayout.addLayout(self.MHBox)
         self.methodMenu = QComboBox(self.ui)
         self.methodMenu.activated.connect(self.runMethod)
         self.methodMenu.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum)
-        self.labeldevice = QLabel('No device found', self.ui)
         self.RHBox=QHBoxLayout()
         self.uiLayout.addLayout(self.RHBox)
         self.labelrun = QLabel('Run ', self.ui)
@@ -58,22 +79,35 @@ class APIHandler(QtCore.QObject):
         self.labelresult = QLabel('', self.ui)
         self.labelresult.setStyleSheet('QLabel {background-color: white}')
         self.labelresult.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum)
+        self.signaldefs = QTextEdit(self.ui)
+        self.signaldefs.setReadOnly(True)
+        self.signallogs = QTextEdit(self.ui)
+        self.signallogs.setReadOnly(True)
         self.logs = QTextEdit(self.ui)
         self.logs.setReadOnly(True)
         #self.logs = QWebEngineView(self.ui)
         self.showmethods = QPushButton('Show/hide methods')
         self.showmethods.clicked.connect(lambda c: self.logs.setVisible(not self.logs.isVisible()))
         self.showmethods.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
-        self.uiLayout.addWidget(self.showmethods)
+        self.DHBox.addWidget(self.showmethods)
+        self.showsignals = QPushButton('Show/hide signals')
+        self.showsignals.clicked.connect(lambda c: self.signaldefs.setVisible(not self.signaldefs.isVisible()))
+        self.showsignals.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
+        self.DHBox.addWidget(self.showsignals)
+        self.showsignallogs = QPushButton('Show/hide signals logs')
+        self.showsignallogs.clicked.connect(lambda c: self.signallogs.setVisible(not self.signallogs.isVisible()))
+        self.showsignallogs.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
+        self.DHBox.addWidget(self.showsignallogs)
         self.pageContent = '<html><body><h4>No device found</h4></body></html>'
         self.logs.setHtml(self.pageContent)
-        self.MHBox.addWidget(self.labeldevice, Qt.AlignLeft)
         self.MHBox.addWidget(self.labelrun, Qt.AlignRight)
         self.MHBox.addWidget(self.methodMenu, Qt.AlignRight)
         self.RHBox.addWidget(self.labelres)
         self.RHBox.addWidget(self.labelresult)
         self.layout.addWidget(self.uiFrame)
         self.layout.addWidget(self.logs)
+        self.layout.addWidget(self.signaldefs)
+        self.layout.addWidget(self.signallogs)
         return self.ui
     def inspectMethods(self):
         self.genericMethods = list()
@@ -189,6 +223,7 @@ class APIHandler(QtCore.QObject):
                 return
             #res = 'unsupported'+str(pvalues)
             params = pvalues.values()
+            paramdialog.destroy()
             try:
                 res = m(*params)
             except:
@@ -220,6 +255,30 @@ class APIHandler(QtCore.QObject):
         #self.logs.insertHtml(self.pageContent)
         self.pageContent += '</body></html>'
         self.logs.setHtml(self.pageContent)
+        self.pageSignalDefs = '<html><body>'
+        self.pageSignalDefs += '<div><h4>Signals</h4>'
+        self.pageSignalDefs += '<details><summary>List of signals emitted by this instance</summary>'
+        self.pageSignalDefs += '<table border="1"><tr><th>Name</th><th>Signature</th><th>Index</th></tr>'
+        for m in self.signals:
+            plist = [QtCore.QMetaType.typeName(m.parameterType(i)) for i in range(m.parameterCount())]
+            self.pageSignalDefs += '<tr><td>'+bytearray(m.name()).decode('ascii')+'</td><td>'+', '.join(plist)+'</td><td>'+str(m.methodIndex())+'</td></tr>'
+        self.pageSignalDefs += '</table>'
+        self.pageSignalDefs += '</details>'
+        self.pageSignalDefs += '</div>'
+        self.signaldefs.setHtml(self.pageSignalDefs)
+    @QtCore.pyqtSlot(int)
+    @QtCore.pyqtSlot(bool)
+    @QtCore.pyqtSlot(str)
+    @QtCore.pyqtSlot(float)
+    @QtCore.pyqtSlot(IVectorProperty)
+    @QtCore.pyqtSlot(IBLOB)
+    def catchSignals(self, *args):
+        sender = self.sender()
+        sigindex = self.senderSignalIndex()
+        meth = sender.metaObject().method(sigindex)
+        self.signallogs.insertHtml('signal <b>'+bytearray(meth.methodSignature()).decode('ascii')+'</b>  <i>'+', '.join([html.escape(str(p)) for p in args])+'</i><br/>\n')
+        #print('Got signal',sigindex,  meth.name(), meth.methodSignature(), sender.getDeviceName(), ', '.join([str(p) for p in args]))
+
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
