@@ -153,10 +153,10 @@ class PropertyUI:
             html+='</fieldset></form>'
         else:
             html+='</div></fieldset></form>'
-            #html+='</div>'        
+            #html+='</div>'
         html+='</div>'
         return html
-    
+
     def refresh_ui(self, event):
         index = 0
         htmlreplaces=[]
@@ -181,7 +181,7 @@ class PropertyUI:
                     htmladdclass.append(('#'+pelemid+'-set', 'btn-primary'))
             index+=1
         return htmlreplaces, htmladdclass, htmlremoveclass
-            
+
 class DeviceUI:
     def __init__(self, device, deviceid, client):
         self.device = device
@@ -192,7 +192,7 @@ class DeviceUI:
     def gethtml(self):
         htmldevice='<ul class="nav nav-pills nav-stacked col-md-2" id="pills'+str(self.deviceid)+'" data-spy="affix" data-offset-top="53"></ul>'
         html='<div class="tab-pane" role="tabpane" id="device'+str(self.deviceid)+'" >'+htmldevice+'<div id="device'+str(self.deviceid)+'-tab" class="tab-content col-md-10" role="tabpane"></div></div>'
-        return html 
+        return html
     def addproperty(self, event):
         res=[]
         p=event.value
@@ -211,7 +211,7 @@ class DeviceUI:
         self.props[pname] = PropertyUI(p, propid, self.client)
         res.append(('#'+ptabid, self.props[pname].gethtml()))
         return res, self.props[pname].getfunregister()
-    
+
 class ControlPanelUI:
     def __init__(self, sofi, navbar):
         self.sofi = sofi
@@ -242,7 +242,7 @@ class ControlPanelUI:
                 self.sofi.addclass(selector, cl)
             for selector, cl in htmlremoveclass:
                 self.sofi.removeclass(selector, cl)
-                
+
 class ControlPanel:
     def __init__(self, sofi):
         self.sofi = sofi
@@ -251,13 +251,13 @@ class ControlPanel:
         self.modals=[]
         self.navbar='navbar-devices'
         self.ui=ControlPanelUI(self.sofi, self.navbar)
-        
+
     async def oninit(self, event):
         logging.info("MAIN")
         v = View("npindi control panel with sofi", bscss='assets/bootstrap.min-3.3.6.css', bsjs='assets/bootstrap.min-3.3.6.js', jquery='assets/jquery-2.2.4.js')
 
         n = Navbar(brand='npindi', fixed='top')
-    
+
         p=Dropdown("Connections", cl='scrollable-menu', ident='connections', navbaritem=True)
         n.adddropdown(p)
 
@@ -299,14 +299,14 @@ class ControlPanel:
 
         device_ul=UnorderedList(cl="nav navbar-nav nav-tabs", ident="navbar-devices")
         n.addelement(device_ul)
-        
+
         v.addelement(n)
-    
+
         c = Container(fluid=True, ident='container-main')
 
         devicetabs=Div(cl="tab-content", ident="device-tabs")
         c.newrow(devicetabs)
-        
+
         v.addelement(c)
 
         self.sofi.load(str(v), event['client'])
@@ -338,7 +338,7 @@ class ControlPanel:
         logging.info("connecting to "+host+":"+port+' serverid '+str(serverid))
         #logger = logging.getLogger(host+":"+port)
         mediator=IndiEventAsyncioMediator(logger=None)
-        client = IndiClient(logger=None, host=host, port=int(port), mediator=mediator)        
+        client = IndiClient(logger=None, host=host, port=int(port), mediator=mediator)
         if not client.connect():
             logging.warning('INDI server '+str(serverid)+' not reachable')
             #del(self.servers[serverid])
@@ -351,7 +351,7 @@ class ControlPanel:
         self.sofi.register('click', (lambda event: self.disconnectserver(serverid)), selector='#disconnect-server-'+str(serverid), client=event['client'])
         consumer = asyncio.ensure_future(self.consume(client))
         self.servers[serverid] = {'client': client, 'consumer': consumer}
-        
+
     async def disconnectserver(self, serverid):
         logging.info("disconnecting from "+str(serverid))
         #self.servers[serverid]['client'].disconnect()
@@ -392,5 +392,3 @@ app.register('init', control_panel.oninit)
 app.register('load', control_panel.onload)
 
 app.start()
-
-    

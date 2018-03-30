@@ -48,7 +48,7 @@ class IndiEtreeParser:
         for event, elem in self.parser.read_events():
             pass
         self.current_chunk=[]
-        self.current_depth=0   
+        self.current_depth=0
     def parse_chunk(self, buf):
         self.parser.feed(buf)
         for event, elem in self.parser.read_events():
@@ -64,7 +64,7 @@ class IndiEtreeParser:
                 if not self.indiclient.dispatch_command(elem):
                     logger.error('Parser: dispatch_command failed for element '+ elem.tag)
 
-                
+
 class StoppableThread(threading.Thread):
     """Thread class with a stop() method. The thread itself has to check
     regularly for the stopped() condition."""
@@ -83,7 +83,7 @@ class Listener(StoppableThread):
     def __init__(self, indiclient):
         super(Listener, self).__init__()
         self.indiclient=indiclient
-        self.socket=self.indiclient.socket
+        self.socket=self.indiclient.client_socket
         #self.parser=IndiExpatParser(self.indiclient)
         self.parser=IndiEtreeParser(self.indiclient)
         #self.record=True
