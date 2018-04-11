@@ -67,6 +67,32 @@ class dms:
         return self.D
     def Hours(self):
         return self.reduce().Degrees() / 15.0
+    def hmss(self):
+        hour = int(self.reduce().Degrees() / 15.0)
+        hm = int(float(60.0 * (math.fabs(self.Hours()) - abs(hour))))
+        if self.Hours() < 0.0 and self.Hours() > -1.0:
+            hm = -1 * hm
+        hs = int(float(60.0 * (60.0 * (math.fabs(self.Hours()) - abs(hour)) - abs(hm))))
+        if hour == 0 and hm == 0 and self.Hours() < 0.0:
+            hs = -1 * hs
+        hss = int(float(1000.0 * (60.0 * (60.0 * (math.fabs(self.Hours()) - abs(hour)) - abs(hm)) - abs(hs))))
+        if hour == 0 and hm == 0 and hs == 0 and self.Hours() < 0.0:
+            hss = -1 * hss
+        return (hour, hm, hs, hss)
+    def dmss(self):
+        if self.D == float('nan'):
+            return (0,0,0,0)
+        degree = int(self.D)
+        arcm = int(float(60.0 * (math.fabs(self.D) - abs(degree))))
+        if self.D < 0.0 and self.D > -1.0:
+            arcm = -1 * arcm
+        arcs = int(float(60.0 * (60.0 * (math.fabs(self.D) - abs(degree)) - abs(arcm))))
+        if degree == 0 and arc == 0 and self.D < 0.0:
+            arcs = -1 * arcs
+        marcs = int(float(1000.0 * (60.0 * (60.0 * (math.fabs(self.D) - abs(degree)) - abs(arcm)) - abs(arcs))))
+        if degree == 0 and arcm == 0 and arcs == 0 and self.D < 0.0:
+            marcs = -1 * marcs
+        return(degree, arcm, arcs, marcs)
     def setD(self, x):
         self.D = float(x)
     def setH(self, x):

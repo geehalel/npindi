@@ -35,11 +35,11 @@ class APIHandler(QtCore.QObject):
         #     if isinstance(obj, QtCore.pyqtBoundSignal):
         #         self.signals.append(obj)
         # #print('Signals for', self.gd_device.getDeviceName())
-        for m in self.signals:
+        #for m in self.signals:
         #     print(s, s.signal)
             #print(bytearray(m.name()).decode('ascii'))
-            s = getattr(self.gd_device, bytearray(m.name()).decode('ascii'))
-            s.connect(self.catchSignals)
+            #s = getattr(self.gd_device, bytearray(m.name()).decode('ascii'))
+            #s.connect(self.catchSignals)
     @staticmethod
     def buildEnumTypes():
         import importlib
@@ -95,7 +95,9 @@ class APIHandler(QtCore.QObject):
         self.showsignals.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
         self.DHBox.addWidget(self.showsignals)
         self.showsignallogs = QPushButton('Show/hide signals logs')
-        self.showsignallogs.clicked.connect(lambda c: self.signallogs.setVisible(not self.signallogs.isVisible()))
+        #self.showsignallogs.clicked.connect(lambda c: self.signallogs.setVisible(not self.signallogs.isVisible()))
+        self.showsignallogs.clicked.connect(self.showSignals)
+        self.signallogs.setVisible(False)
         self.showsignallogs.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
         self.DHBox.addWidget(self.showsignallogs)
         self.pageContent = '<html><body><h4>No device found</h4></body></html>'
@@ -266,12 +268,36 @@ class APIHandler(QtCore.QObject):
         self.pageSignalDefs += '</details>'
         self.pageSignalDefs += '</div>'
         self.signaldefs.setHtml(self.pageSignalDefs)
+    def showSignals(self):
+        if self.signallogs.isVisible():
+            for m in self.signals:
+            #     print(s, s.signal)
+                #print(bytearray(m.name()).decode('ascii'))
+                s = getattr(self.gd_device, bytearray(m.name()).decode('ascii'))
+                try:
+                    s.disconnect(self.catchSignals)
+                except:
+                    pass
+            self.signallogs.clear()
+            self.signallogs.setVisible(False)
+        else:
+            for m in self.signals:
+            #     print(s, s.signal)
+                #print(bytearray(m.name()).decode('ascii'))
+                s = getattr(self.gd_device, bytearray(m.name()).decode('ascii'))
+                try:
+                    s.connect(self.catchSignals)
+                except:
+                    pass
+            self.signallogs.setVisible(True)
     @QtCore.pyqtSlot(int)
     @QtCore.pyqtSlot(bool)
     @QtCore.pyqtSlot(str)
     @QtCore.pyqtSlot(float)
     @QtCore.pyqtSlot(IVectorProperty)
     @QtCore.pyqtSlot(IBLOB)
+    #@QtCore.pyqtSlot(QtCore.QObject)
+    @QtCore.pyqtSlot()
     def catchSignals(self, *args):
         sender = self.sender()
         sigindex = self.senderSignalIndex()
