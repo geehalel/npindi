@@ -87,7 +87,7 @@ class dms:
         if self.D < 0.0 and self.D > -1.0:
             arcm = -1 * arcm
         arcs = int(float(60.0 * (60.0 * (math.fabs(self.D) - abs(degree)) - abs(arcm))))
-        if degree == 0 and arc == 0 and self.D < 0.0:
+        if degree == 0 and arcm == 0 and self.D < 0.0:
             arcs = -1 * arcs
         marcs = int(float(1000.0 * (60.0 * (60.0 * (math.fabs(self.D) - abs(degree)) - abs(arcm)) - abs(arcs))))
         if degree == 0 and arcm == 0 and arcs == 0 and self.D < 0.0:
