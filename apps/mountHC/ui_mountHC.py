@@ -250,8 +250,9 @@ class mountMotionController(QFrame):
         self.scope.setTrackMode(index)
     @pyqtSlot()
     def update(self):
-        trackindex = self.scope.getTrackMode()
-        self.setTrackRate(trackindex)
+        if self.scope.canControlTrack():
+            trackindex = self.scope.getTrackMode()
+            self.setTrackRate(trackindex)
         self.trackActivate.setChecked(self.scope.isTracking())
         slewindex = INDI.IUFindOnSwitchIndex(self.slewSwitch)
         self.setSlewSpeed(slewindex)
@@ -310,13 +311,19 @@ class mountHC(QFrame):
         self.LAT.setDMS(dms(self.lat.value))
         self.LON.setDMS(dms(self.lon.value))
         time_utc = self.scope.getProperty('TIME_UTC')
-        self.utc = INDI.IUFindText(time_utc, 'UTC')
-        print(self.utc.text, INDI.f_scan_sexa(self.utc.text.split('T')[1]))
-        self.UTC.setDMS(dms(INDI.f_scan_sexa(self.utc.text.split('T')[1])*15.0))
+        self.utc = None
+        if time_utc:
+            self.utc = INDI.IUFindText(time_utc, 'UTC')
+        #print(self.utc.text, INDI.f_scan_sexa(self.utc.text.split('T')[1]))
+        if self.utc:
+            self.UTC.setDMS(dms(INDI.f_scan_sexa(self.utc.text.split('T')[1])*15.0))
         time_lst = self.scope.getProperty('TIME_LST')
-        self.lst = INDI.IUFindNumber(time_lst, 'LST')
-        print(self.lst.value)
-        self.LST.setDMS(dms(self.lst.value*15.0))
+        self.lst = None
+        if time_lst:
+            self.lst = INDI.IUFindNumber(time_lst, 'LST')
+        #print(self.lst.value)
+        if self.lst:
+            self.LST.setDMS(dms(self.lst.value*15.0))
         self.motion.makeConnections(self.scope)
         self.scope.newCoord.connect(self.setCoord)
     @pyqtSlot()
@@ -324,8 +331,10 @@ class mountHC(QFrame):
         self.motion.update()
         self.LAT.setDMS(dms(self.lat.value))
         self.LON.setDMS(dms(self.lon.value))
-        self.UTC.setDMS(dms(INDI.f_scan_sexa(self.utc.text.split('T')[1])*15.0))
-        self.LST.setDMS(dms(self.lst.value*15.0))
+        if self.utc:
+            self.UTC.setDMS(dms(INDI.f_scan_sexa(self.utc.text.split('T')[1])*15.0))
+        if self.lst:
+            self.LST.setDMS(dms(self.lst.value*15.0))
 if __name__ == '__main__':
     from PyQt5.QtWidgets import QApplication
     import sys
