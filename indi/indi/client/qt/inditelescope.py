@@ -542,7 +542,7 @@ class Telescope(ISD.DeviceDecorator):
                 NSMotion = 'N'
             elif movementSP.vp['MOTION_SOUTH'].s == INDI.ISState.ISS_ON:
                 NSMotion = 'S'
-        movementSP = slef.baseDevice.getSwitch('TELESCOPE_MOTION_WE')
+        movementSP = self.baseDevice.getSwitch('TELESCOPE_MOTION_WE')
         WEMotion = ''
         if movementSP is not None:
             if movementSP.vp['MOTION_WEST'].s == INDI.ISState.ISS_ON:

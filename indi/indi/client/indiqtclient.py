@@ -15,6 +15,11 @@
 #    You should have received a copy of the GNU General Public License
 #    along with npindi.  If not, see <http://www.gnu.org/licenses/>.
 
+# THIS IS BUGGY AS MEDIATOR CALLBACKS RUN IN A POSIX THREAD
+# THAT QT IGNORES. THIS YIELDS IN SIGNALING ISSUES
+
+### DO NOT USE ###
+### IF USING QT USE BaseClientQt DEFINED IN baseclientqt.py 
 
 from PyQt5 import QtCore
 from indi.INDI import *
@@ -78,7 +83,7 @@ class IndiQtMediator(BaseMediator, QtCore.QObject):
         self.logger.debug('server_disconnected: ' + str(exit_code))
         self.serverdisconnected.emit(exit_code)
 
-    
+
 class IndiQtClient(BaseClient):
     def __init__(self, host='localhost', port=7624, logger=None):
         mediator=IndiQtMediator(logger=logger)
