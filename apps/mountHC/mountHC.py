@@ -1,3 +1,20 @@
+# Copyright 2018 geehalel@gmail.com
+#
+# This file is part of npindi.
+#
+#    npindi is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    npindi is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with npindi.  If not, see <http://www.gnu.org/licenses/>.
+
 from PyQt5.QtWidgets import QApplication, QMainWindow, QAction
 
 from indi.INDI import *
@@ -60,18 +77,35 @@ class MainWindow(QMainWindow):
                 'a Telescope Controller in your Qt application.')
     @QtCore.pyqtSlot(ISD.GDInterface)
     def addTimedTelescope(self, gdi):
+        print('adding telescope')
         self.timer.timeout.connect(lambda : self.addTelescope(gdi))
         self.timer.start()
     @QtCore.pyqtSlot(ISD.GDInterface)
     def addTelescope(self, gdi):
         if self.scope is not None:
             return
+        INDIListener.Instance().newTelescope.disconnect(self.addTimedTelescope)
+        INDIListener.Instance().deviceRemoved.connect(self.removeTelescope)
         self.scope = gdi
         self.HC.setTelescope(self.scope)
         self.timer.setInterval(1000)
         self.timer.setSingleShot(False)
         self.timer.timeout.connect(self.HC.update)
-        self.timer.start()
+        #self.timer.start()
+    @QtCore.pyqtSlot(ISD.GDInterface)
+    def removeTelescope(self, gdi):
+        if self.scope is None:
+            return
+        if self.scope != gdi:
+            return
+        INDIListener.Instance().deviceRemoved.disconnect(self.removeTelescope)
+        self.scope = None
+        self.HC.removeTelescope()
+        self.timer.timeout.disconnect(self.HC.update)
+        #self.timer.stop()
+        self.timer.setSingleShot(True)
+        self.timer.setInterval(1000)
+        INDIListener.Instance().newTelescope.connect(self.addTimedTelescope)
 
 import sys
 app=QApplication(sys.argv)

@@ -102,7 +102,7 @@ class dms:
         if d < 0:
             self.D = -1.0 * self.D
     def setHms(self, h, m, s, ms=0.0):
-        self.D = 15.0 * (float(abs(d)) + (float(m) +(float(s) + float(ms)/1000.0)/60.0)/60.0)
+        self.D = 15.0 * (float(abs(h)) + (float(m) +(float(s) + float(ms)/1000.0)/60.0)/60.0)
         if h < 0:
             self.D = -1.0 * self.D
     def setRadians(self, Rad):

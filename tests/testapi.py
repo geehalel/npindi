@@ -339,6 +339,7 @@ class MainWindow(QMainWindow):
         #self.centrallayout.addSpacerItem(self.centralSpacer)
         INDIListener.Instance().newTelescope.connect(self.addAPIHandler)
         INDIListener.Instance().newCCD.connect(self.addAPIHandler)
+        INDIListener.Instance().deviceRemoved.connect(self.removeAPIHandler)
         self.setWindowTitle('Test PyQt INDI API')
         self.show()
     def closeEvent(self, event):
@@ -360,9 +361,24 @@ class MainWindow(QMainWindow):
         #self.centrallayout.removeItem(self.centralSpacer)
         self.centrallayout.addWidget(apihui)
         #self.centrallayout.addItem(self.centralSpacer)
-        self.apihandlers.append(apih)
+        self.apihandlers.append((gdi, apih, apihui))
         apih.refresh()
-
+    @QtCore.pyqtSlot(ISD.GDInterface)
+    def removeAPIHandler(self, thegdi):
+        print('remove device')
+        index = 0
+        for (gdi, apih, apihui) in self.apihandlers:
+            if gdi == thegdi:
+                break
+            index += 1
+        self.apihandlers = self.apihandlers[:index] + self.apihandlers[index+1:]
+        #self.centrallayout.removeItem(self.centralSpacer)
+        apihui.hide()
+        self.centrallayout.removeWidget(apihui)
+        apihui.destroy()
+        #self.centrallayout.addItem(self.centralSpacer)
+        del(apihui)
+        del(apih)
 # No logging category in PyQt5 and debug output is disabled
 # thus install a message handler and filter our category
 # you need to launch this test with this command

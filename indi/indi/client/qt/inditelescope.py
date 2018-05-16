@@ -142,18 +142,18 @@ class Telescope(ISD.DeviceDecorator):
             self.EqCoordPreviousState = nvp.s
             if prevCoord.ra() != self.currentCoord.ra() or prevCoord.dec() != self.currentCoord.dec():
                 self.newCoord.emit(self.currentCoord)
-        elif nvp.name == 'HORIZONTAL_COORD':
-            Az = INDI.IUFindNumber(nvp, 'AZ')
-            Alt = INDI.IUFindNumber(nvp, 'ALT')
-            if Az is None or Alt is None:
-                return
-            prevCoord = SkyPoint(self.currentCoord.ra(), self.currentCoord.dec())
-            self.currentCoord.setAz(Az.value)
-            self.currentCoord.setAlt(Alt.value)
-            lstdms = dms(getGAST() * 15.0 + Options.Instance().value('location/longitude'))
-            self.currentCoord.HorizontalToEquatorial(lstdms, dms(Options.Instance().value('location/latitude')))
-            if prevCoord.ra() != self.currentCoord.ra() or prevCoord.dec() != self.currentCoord.dec():
-                self.newCoord.emit(self.currentCoord)
+        # elif nvp.name == 'HORIZONTAL_COORD':
+        #     Az = INDI.IUFindNumber(nvp, 'AZ')
+        #     Alt = INDI.IUFindNumber(nvp, 'ALT')
+        #     if Az is None or Alt is None:
+        #         return
+        #     prevCoord = SkyPoint(self.currentCoord.ra(), self.currentCoord.dec())
+        #     self.currentCoord.setAz(Az.value)
+        #     self.currentCoord.setAlt(Alt.value)
+        #     lstdms = dms(getGAST() * 15.0 + Options.Instance().value('location/longitude'))
+        #     self.currentCoord.HorizontalToEquatorial(lstdms, dms(Options.Instance().value('location/latitude')))
+        #     if prevCoord.ra() != self.currentCoord.ra() or prevCoord.dec() != self.currentCoord.dec():
+        #         self.newCoord.emit(self.currentCoord)
         super().processNumber(nvp)
     def processSwitch(self, svp):
         manualMotionChanged = False

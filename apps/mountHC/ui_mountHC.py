@@ -1,3 +1,20 @@
+# Copyright 2018 geehalel@gmail.com
+#
+# This file is part of npindi.
+#
+#    npindi is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    npindi is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with npindi.  If not, see <http://www.gnu.org/licenses/>.
+
 from PyQt5.QtWidgets import QFrame, QMessageBox, QSizePolicy, QPushButton, QLayout, QGridLayout, QVBoxLayout, QHBoxLayout, QLCDNumber, QLabel
 from PyQt5.QtGui import QFontDatabase, QFont
 from PyQt5.QtCore import pyqtSlot
@@ -224,6 +241,22 @@ class mountMotionController(QFrame):
             TelescopeMotionCommand.MOTION_START if state else TelescopeMotionCommand.MOTION_STOP))
         self.DECDown.clicked.connect(lambda state: self.scope.MoveNS(TelescopeMotionNS.MOTION_SOUTH, \
             TelescopeMotionCommand.MOTION_START if state else TelescopeMotionCommand.MOTION_STOP))
+    def disconnect(self):
+        if self.scope is None:
+            return
+        if self.scope.canControlTrack():
+            self.trackActivate.clicked.disconnect()
+        for speed in [ self.speedGuide, self.speedCenter,\
+            self.speedFind, self.speedSlew]:
+            speed.clicked.disconnect()
+        for trackspeed in [self.trackSidereal, self.trackSolar,\
+            self.trackLunar, self.trackCustom]:
+            trackspeed.clicked.disconnect()
+        self.RAUp.clicked.disconnect()
+        self.RADown.clicked.disconnect()
+        self.DECUp.clicked.disconnect()
+        self.DECDown.clicked.disconnect()
+        self.scope = None
     @pyqtSlot(QPushButton, int)
     def setSlewSpeed(self, index):
         #print('set slewspeed', button.text(), index)
@@ -326,8 +359,16 @@ class mountHC(QFrame):
             self.LST.setDMS(dms(self.lst.value*15.0))
         self.motion.makeConnections(self.scope)
         self.scope.newCoord.connect(self.setCoord)
+    def removeTelescope(self):
+        if self.scope is None:
+            return
+        self.motion.disconnect()
+        self.scope.newCoord.disconnect(self.setCoord)
+        self.setActivated(False)
+        self.scope = None
     @pyqtSlot()
     def update(self):
+        print('HC update')
         self.motion.update()
         self.LAT.setDMS(dms(self.lat.value))
         self.LON.setDMS(dms(self.lon.value))
