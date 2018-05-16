@@ -241,7 +241,7 @@ class mountMotionController(QFrame):
             TelescopeMotionCommand.MOTION_START if state else TelescopeMotionCommand.MOTION_STOP))
         self.DECDown.clicked.connect(lambda state: self.scope.MoveNS(TelescopeMotionNS.MOTION_SOUTH, \
             TelescopeMotionCommand.MOTION_START if state else TelescopeMotionCommand.MOTION_STOP))
-    def disconnect(self):
+    def removeConnections(self):
         if self.scope is None:
             return
         if self.scope.canControlTrack():
@@ -261,7 +261,7 @@ class mountMotionController(QFrame):
     def setSlewSpeed(self, index):
         #print('set slewspeed', button.text(), index)
         if index not in self.slewIndex:
-            print('Unknown slew rate index')
+            #print('Unknown slew rate index')
             return
         self.speedGuide.setChecked(False)
         self.speedCenter.setChecked(False)
@@ -273,7 +273,7 @@ class mountMotionController(QFrame):
     def setTrackRate(self, index):
         #print('set trackrate', button.text(), index)
         if index not in self.trackIndex:
-            print('Unknown track rate index')
+            #print('Unknown track rate index')
             return
         self.trackSidereal.setChecked(False)
         self.trackSolar.setChecked(False)
@@ -362,13 +362,12 @@ class mountHC(QFrame):
     def removeTelescope(self):
         if self.scope is None:
             return
-        self.motion.disconnect()
+        self.motion.removeConnections()
         self.scope.newCoord.disconnect(self.setCoord)
         self.setActivated(False)
         self.scope = None
     @pyqtSlot()
     def update(self):
-        print('HC update')
         self.motion.update()
         self.LAT.setDMS(dms(self.lat.value))
         self.LON.setDMS(dms(self.lon.value))

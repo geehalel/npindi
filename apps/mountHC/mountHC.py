@@ -31,13 +31,18 @@ from ui_mountHC import *
 from PyQt5.QtCore import QTimer
 
 class MainWindow(QMainWindow):
+    _connection_delay = 1000
+    _polling_delay = 1000
     def __init__(self):
         super().__init__()
-        self.initUI()
         self.scope = None
-        self.timer = QTimer()
-        self.timer.setSingleShot(True)
-        self.timer.setInterval(1000)
+        self.connectiontimer = QTimer()
+        self.connectiontimer.setSingleShot(True)
+        self.connectiontimer.setInterval(MainWindow._connection_delay)
+        self.pollingtimer = QTimer()
+        self.pollingtimer.setSingleShot(False)
+        self.pollingtimer.setInterval(MainWindow._polling_delay)
+        self.initUI()
     def initUI(self):
         self.exitAct = QAction("E&xit", self, shortcut="Ctrl+Q",
             statusTip="Exit the application", triggered=self.quit)
@@ -63,6 +68,7 @@ class MainWindow(QMainWindow):
         #self.centrallayout.addStretch(1)
         #self.centrallayout.addSpacerItem(self.centralSpacer)
         INDIListener.Instance().newTelescope.connect(self.addTimedTelescope)
+        self.pollingtimer.timeout.connect(self.HC.update)
         self.setWindowTitle('Mount Hand Controller Demo')
         self.show()
     def closeEvent(self, event):
@@ -77,21 +83,18 @@ class MainWindow(QMainWindow):
                 'a Telescope Controller in your Qt application.')
     @QtCore.pyqtSlot(ISD.GDInterface)
     def addTimedTelescope(self, gdi):
-        print('adding telescope')
-        self.timer.timeout.connect(lambda : self.addTelescope(gdi))
-        self.timer.start()
+        self.connectiontimer.timeout.connect(lambda : self.addTelescope(gdi))
+        self.connectiontimer.start()
     @QtCore.pyqtSlot(ISD.GDInterface)
     def addTelescope(self, gdi):
         if self.scope is not None:
             return
         INDIListener.Instance().newTelescope.disconnect(self.addTimedTelescope)
         INDIListener.Instance().deviceRemoved.connect(self.removeTelescope)
+        self.connectiontimer.timeout.disconnect()
         self.scope = gdi
         self.HC.setTelescope(self.scope)
-        self.timer.setInterval(1000)
-        self.timer.setSingleShot(False)
-        self.timer.timeout.connect(self.HC.update)
-        #self.timer.start()
+        self.pollingtimer.start()
     @QtCore.pyqtSlot(ISD.GDInterface)
     def removeTelescope(self, gdi):
         if self.scope is None:
@@ -99,12 +102,9 @@ class MainWindow(QMainWindow):
         if self.scope != gdi:
             return
         INDIListener.Instance().deviceRemoved.disconnect(self.removeTelescope)
+        self.pollingtimer.stop()
         self.scope = None
         self.HC.removeTelescope()
-        self.timer.timeout.disconnect(self.HC.update)
-        #self.timer.stop()
-        self.timer.setSingleShot(True)
-        self.timer.setInterval(1000)
         INDIListener.Instance().newTelescope.connect(self.addTimedTelescope)
 
 import sys
