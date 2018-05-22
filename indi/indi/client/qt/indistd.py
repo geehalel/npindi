@@ -182,15 +182,21 @@ class ISD:
                     self.Disconnected.emit()
             self.switchUpdated.emit(prop)
         def processNumber(self, prop):
-            if Options.Instance().value('npindi/useDeviceSource') and prop.name == 'GEOGRAPHIC_COORD' and prop.s == INDI.IPState.IPS_OK:
-                # TODO Location
-                pass
+            if Options.Instance().value('npindi/useDeviceSource') and prop.name == 'GEOGRAPHIC_COORD' and prop.s == INDI.IPState.IPS_OK and Options.Instance().value('npindi/useGeographicUpdate'):
+                latEle = INDI.IUFindNumber(prop, 'LAT')
+                lonEle = INDI.IUFindNumber(prop, 'LONG')
+                eleEle = INDI.IUFindNumber(prop, 'ELEV')
+                if latEle is not None and lonEle is not None and eleEle is not None:
+                    QLoggingCategory.qCInfo(QLoggingCategory.NPINDI,'Setting geographic coords from device (lat,lon,ele)=('+str(latEle.value)+', '+str(lonEle.value)+','+str(eleEle.value)+')')
+                    Options.Instance().setValue('location/latitude', latEle.value)
+                    Options.Instance().setValue('location/longitude', lonEle.value)
+                    Options.Instance().setValue('location/elevation', eleEle.value)
             elif prop.name == 'WATCHDOG_HEARTBEAT':
                 # TODO WATCHDOG_HEARTBEAT
                 pass
             self.numberUpdated.emit(prop)
         def processText(self, prop):
-            if Options.Instance().value('npindi/useDeviceSource') and prop.name == 'TIME_UTC' and prop.s == INDI.IPState.IPS_OK:
+            if Options.Instance().value('npindi/useDeviceSource') and prop.name == 'TIME_UTC' and prop.s == INDI.IPState.IPS_OK and not isINDIUtcSynced():
                 tp = INDI.IUFindText(prop, 'UTC')
                 if tp is None: return
                 indiDateTime = QDateTime.fromString(tp.text, Qt.ISODate)
@@ -198,6 +204,7 @@ class ISD:
                 if tp is None: return
                 utcOffset = float(tp.text)
                 QLoggingCategory.qCInfo(QLoggingCategory.NPINDI, 'Setting UTC time from device: '+self.getDeviceName() + indiDateTime.toString())
+                setINDIUtc(indiDateTime)
             self.textUpdated.emit(prop)
         def processLight(self, prop):
             self.lightUpdated.emit(prop)

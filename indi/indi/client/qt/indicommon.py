@@ -127,17 +127,48 @@ class QLed(QFrame):
         self._mcolor = color
         self.setStyleSheet('QFrame {background-color: '+self._mcolor+'}')
 # Default getJD/getLST fonction
-from PyQt5.QtCore import QDateTime, QDate
+from PyQt5.QtCore import QDateTime, QDate, QTimer
 import math
+_INDIUtcDatetime = None
+_INDIUtcTimer = None
+_INDIUtcRefresh = 250
+_INDIUtcSynced = False
+def setINDIUtc(dt):
+    global _INDIUtcDatetime, _INDIUtcTimer, _INDIUtcSynced
+    _INDIUtcDatetime = dt
+    _INDIUtcTimer = QTimer()
+    _INDIUtcTimer.setSingleShot(False)
+    _INDIUtcTimer.setInterval(_INDIUtcRefresh)
+    _INDIUtcTimer.timeout.connect(lambda : _INDIUtcDatetime.addMSecs(_INDIUtcRefresh))
+    _INDIUtcTimer.start()
+    _INDIUtcSynced = True
+def resetINDIUtc():
+    global _INDIUtcDatetime, _INDIUtcTimer, _INDIUtcSynced
+    _INDIUtcDatetime = None
+    _INDIUtcTimer.stop()
+    _INDIUtcTimer.timeout.disconnect()
+    _INDIUtcTimer = None
+    _INDIUtcSynced = False
+def isINDIUtcSynced():
+    global _INDIUtcDatetime, _INDIUtcTimer, _INDIUtcSynced
+    return _INDIUtcSynced
 def getJD():
-    now = QDateTime.currentDateTimeUtc()
+    global _INDIUtcDatetime, _INDIUtcTimer, _INDIUtcSynced
+    if _INDIUtcDatetime is None:
+        now = QDateTime.currentDateTimeUtc()
+    else:
+        now = _INDIUtcDatetime.toUTC()
     jd0 = now.date().toJulianDay() - 0.5
     h = now.time().msecsSinceStartOfDay() / (3600 * 1000)
     jd = jd0 + h / 24.0
     return jd
 def getGAST():
+    global _INDIUtcDatetime, _INDIUtcTimer, _INDIUtcSynced
     # using approximation from http://aa.usno.navy.mil/faq/docs/GAST.php
-    now = QDateTime.currentDateTimeUtc()
+    if _INDIUtcDatetime is None:
+        now = QDateTime.currentDateTimeUtc()
+    else:
+        now = _INDIUtcDatetime.toUTC()
     jd0 = now.date().toJulianDay() - 0.5
     h = now.time().msecsSinceStartOfDay() / (3600 * 1000)
     jd = jd0 + h / 24.0
