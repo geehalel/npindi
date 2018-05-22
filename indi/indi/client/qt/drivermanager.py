@@ -104,11 +104,18 @@ class DriverManager(QDialog):
         self.ui.localTreeWidget.itemClicked.connect(self.updateLocalTab)
         self.ui.clientTreeWidget.itemClicked.connect(self.updateClientTab)
         self.ui.localTreeWidget.expanded.connect(self.resizeDeviceColumn)
+
+        # indi client options
+        self.options = QDialog(parent=self)
+        uiOptions = ui_Options(self.options)
+        self.options.adjustSize()
         # action groups
         self.actionGroups = dict()
         self.ag_indi = QActionGroup(self)
+        self.optionsAct = QAction('Options', self, statusTip='Set INDI Client options', triggered=self.toggleOptions)
         self.toggleDMAct = QAction('Driver Manager', self, statusTip='Show/hide Driver Manager', triggered=self.toggleDM)
         self.toggleCPAct = QAction('Control Panel', self, statusTip='Show/hide control panel', triggered=lambda _: GUIManager.Instance().updateStatus(True))
+        self.ag_indi.addAction(self.optionsAct)
         self.ag_indi.addAction(self.toggleDMAct)
         self.ag_indi.addAction(self.toggleCPAct)
         self.actionGroups['INDI'] = self.ag_indi
@@ -143,6 +150,13 @@ class DriverManager(QDialog):
             self.raise_()
             self.activateWindow()
             self.showNormal()
+    def toggleOptions(self):
+        if self.options.isVisible() : #and self.isActiveWindow():
+            self.options.hide()
+        else:
+            self.options.raise_()
+            self.options.activateWindow()
+            self.options.showNormal()
     def addINDIHost(self):
         hostConfDialog = QDialog()
         uiFile = os.path.dirname(inspect.getfile(inspect.currentframe()))

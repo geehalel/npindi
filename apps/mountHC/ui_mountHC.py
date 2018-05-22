@@ -26,19 +26,21 @@ class LCD(QLabel):
     _lcd_font = None
     _default_font = 'NODSEG14 Classic'
     _all_off = '!'
+    _font_size = 24
     _inactive = 'color: "#800000"; background-color:"black";'
     _active = ' color: "red"; background-color:"black";'
     _radius = ' border-radius: 10px;'
     def __init__(self, parent=None):
         super().__init__(parent)
         self.fontdatabase = QFontDatabase()
+        self.fontsize = LCD._font_size
         self.state  = LCD._inactive
         self.radius = LCD._radius
         if LCD._lcd_font is None:
-            LCD._lcd_font = self.fontdatabase.font(LCD._default_font, 'Bold', 24)
+            LCD._lcd_font = self.fontdatabase.font(LCD._default_font, 'Bold', self.fontsize)
             if LCD._lcd_font.family() != LCD._default_font:
                 LCD._lcd_font = QFontDatabase.systemFont(QFontDatabase.FixedFont)
-                LCD._lcd_font.setPointSize(24)
+                LCD._lcd_font.setPointSize(self.fontsize)
                 LCD._lcd_font.setWeight(QFont.Bold)
             print('loaded font', LCD._lcd_font.family())
         super().setFont(LCD._lcd_font)
@@ -52,7 +54,7 @@ class LCD(QLabel):
         font = self.fontdatabase.font(family, self.font().styleName(), self.font().pointSize())
         if font.family() != family:
             font = QFontDatabase.systemFont(QFontDatabase.FixedFont)
-            font.setPointSize(24)
+            font.setPointSize(self.fontsize)
             font.setWeight(QFont.Bold)
         super().setFont(font)
     def setPointSize(self, size):
@@ -133,9 +135,9 @@ class mountMotionController(QFrame):
         self.layout = QVBoxLayout(self)
         self.motionlayout = QGridLayout()
         self.buttonlist=[
-            [('Center', 12), ('\u2bc5', 36), ('Find', 12)],
-            [('\u2bc7', 36), ('\u2b6e', 36), ('\u2bc8', 36)],
-            [('Guide', 12), ('\u2bc6', 36), ('Slew', 12)]
+            [('Center', LCD._font_size  / 2), ('\u2bc5', (3 * LCD._font_size) / 2), ('Find', LCD._font_size / 2)],
+            [('\u2bc7', (3 * LCD._font_size) / 2), ('\u2b6e', (3 * LCD._font_size) / 2), ('\u2bc8', (3 * LCD._font_size) / 2)],
+            [('Guide', LCD._font_size / 2), ('\u2bc6', (3 * LCD._font_size) / 2), ('Slew', LCD._font_size / 2)]
             ]
         self.buttons = list()
         for row in range(len(self.buttonlist)):
@@ -158,7 +160,7 @@ class mountMotionController(QFrame):
         self.speedCenter = self.buttons[0][0]
         self.speedFind = self.buttons[0][2]
         self.speedSlew = self.buttons[2][2]
-        self.tracklist =[('\u2605', 12), ('\u2609', 12), ('\u263D', 12), ('\u270d', 12)]
+        self.tracklist =[('\u2605', LCD._font_size / 2), ('\u2609', LCD._font_size / 2), ('\u263D', LCD._font_size  /2), ('\u270d', LCD._font_size / 2)]
         #self.tracklist =[('\u2605', 12), ('\u2609', 12), ('\u263D', 12)]
         self.tracklayout = QHBoxLayout()
         #self.tracklayout.setSizeConstraint(QLayout.SetMinimumSize)
@@ -307,17 +309,17 @@ class mountHC(QFrame):
         self.layout.addWidget(self.AZ)
         self.layout.addWidget(self.ALT)
         self.UTC = DMSLLCD(parent=self, label='UTC', width=13, value=None, angleformat=DMSLLCD.AngleFormat.HOURS_HMS)
-        self.UTC.setPointSize(12)
+        self.UTC.setPointSize(LCD._font_size / 2)
         self.LST = DMSLLCD(parent=self, label='LST', width=13, value=None, angleformat=DMSLLCD.AngleFormat.HOURS_HMS)
-        self.LST.setPointSize(12)
+        self.LST.setPointSize(LCD._font_size  / 2)
         self.timelayout = QHBoxLayout()
         self.timelayout.addWidget(self.UTC)
         self.timelayout.addWidget(self.LST)
         self.layout.addLayout(self.timelayout)
         self.LAT = DMSLLCD(parent=self, label='LAT', width=13, value=None, angleformat=DMSLLCD.AngleFormat.DEGREES_DMS, anglerange=dms.AngleRanges.MINUSPI_TO_PI)
-        self.LAT.setPointSize(12)
+        self.LAT.setPointSize(LCD._font_size / 2)
         self.LON = DMSLLCD(parent=self, label='LON', width=13, value=None, angleformat=DMSLLCD.AngleFormat.DEGREES_DMS)
-        self.LON.setPointSize(12)
+        self.LON.setPointSize(LCD._font_size / 2)
         self.sitelayout = QHBoxLayout()
         self.sitelayout.addWidget(self.LAT)
         self.sitelayout.addWidget(self.LON)

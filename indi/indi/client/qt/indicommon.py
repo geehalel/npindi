@@ -185,16 +185,30 @@ class Options(QSettings):
         if Options.__instance is None:
             Options.__instance = Options(parent=None)
         return Options.__instance
-from PyQt5.QtWidgets import QGroupBox, QFrame, QLineEdit, QMessageBox, QSizePolicy, QPushButton, QLayout, QGridLayout, QVBoxLayout, QHBoxLayout, QLCDNumber, QLabel
+from PyQt5.QtWidgets import QCheckBox, QGroupBox, QFrame, QLineEdit, QMessageBox, QSizePolicy, QPushButton, QLayout, QGridLayout, QVBoxLayout, QHBoxLayout, QLCDNumber, QLabel
+from PyQt5.QtGui import QDoubleValidator, QIntValidator
+from PyQt5.QtCore import QLocale
 class ui_Options(QFrame):
     def __init__(self, parent=None, settings=Options.Instance()):
         super().__init__(parent)
         self.settings = settings
-        self.initUI()
+        self.initUI(parent)
     def setTextOption(self, key, widget):
-        print('setting option for', key, 'value', widget)
+        #print('setting text option for', key, 'value', widget)
         self.settings.setValue(key, widget.text())
+    def setFloatOption(self, key, widget):
+        locale = QLocale()
+        #print('setting float option for', key, 'value', widget)
+        self.settings.setValue(key, locale.toDouble(widget.text()))
+    def setIntOption(self, key, widget):
+        locale = QLocale()
+        #print('setting int option for', key, 'value', widget)
+        self.settings.setValue(key, locale.toInt(widget.text()))
+    def setBoolOption(self, key, widget, state):
+        #print('setting bool option for', key, 'value', widget)
+        self.settings.setValue(key, False if state==0 else True)
     def initUI(self, parent=None):
+        locale = QLocale()
         layout = QVBoxLayout(parent if parent is not None else self)
         for k in self.settings.childKeys():
             hboxlayout = QHBoxLayout()
@@ -205,6 +219,18 @@ class ui_Options(QFrame):
             if isinstance(value, str):
                 valuewidget = QLineEdit(value)
                 valuewidget.editingFinished.connect(lambda key=self.settings.group()+'/'+k, widget=valuewidget: self.setTextOption(key, widget))
+            elif isinstance(value, float):
+                valuewidget = QLineEdit(locale.toString(value))
+                valuewidget.setValidator(QDoubleValidator())
+                valuewidget.editingFinished.connect(lambda key=self.settings.group()+'/'+k, widget=valuewidget: self.setFloatOption(key, widget))
+            elif isinstance(value, int) and not isinstance(value, bool):
+                valuewidget = QLineEdit(locale.toString(value))
+                valuewidget.setValidator(QIntValidator())
+                valuewidget.editingFinished.connect(lambda key=self.settings.group()+'/'+k, widget=valuewidget: self.setIntOption(key, widget))
+            elif isinstance(value, bool):
+                valuewidget = QCheckBox()
+                valuewidget.setChecked(value)
+                valuewidget.stateChanged.connect(lambda state, key=self.settings.group()+'/'+k, widget=valuewidget: self.setBoolOption(key, widget, state))
             if valuewidget is not None:
                 hboxlayout.addWidget(valuewidget)
             layout.addLayout(hboxlayout)
