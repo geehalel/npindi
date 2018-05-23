@@ -196,13 +196,16 @@ class ISD:
                 pass
             self.numberUpdated.emit(prop)
         def processText(self, prop):
-            if Options.Instance().value('npindi/useDeviceSource') and prop.name == 'TIME_UTC' and prop.s == INDI.IPState.IPS_OK and not isINDIUtcSynced():
+            if Options.Instance().value('npindi/useDeviceSource') and prop.name == 'TIME_UTC' and prop.s == INDI.IPState.IPS_OK and Options.Instance().value('npindi/useTimeUpdate') and not isINDIUtcSynced():
                 tp = INDI.IUFindText(prop, 'UTC')
                 if tp is None: return
                 indiDateTime = QDateTime.fromString(tp.text, Qt.ISODate)
                 tp = INDI.IUFindText(prop, 'OFFSET')
                 if tp is None: return
-                utcOffset = float(tp.text)
+                try:
+                    utcOffset = float(tp.text)
+                except:
+                    QLoggingCategory.qCWarning(QLoggingCategory.NPINDI, 'Unable to convert UTC Offset: '+tp.text)
                 QLoggingCategory.qCInfo(QLoggingCategory.NPINDI, 'Setting UTC time from device: '+self.getDeviceName() + indiDateTime.toString())
                 setINDIUtc(indiDateTime)
             self.textUpdated.emit(prop)
