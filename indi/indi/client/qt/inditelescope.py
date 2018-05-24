@@ -137,11 +137,12 @@ class Telescope(ISD.DeviceDecorator):
             prevCoord = SkyPoint(self.currentCoord.ra(), self.currentCoord.dec())
             self.currentCoord.setRA(RA.value)
             self.currentCoord.setDec(DEC.value)
-            lstdms = dms(getGAST() * 15.0 + Options.Instance().value('location/longitude'))
+            lstdms = dms((15.0 * getGAST()) + (Options.Instance().value('location/longitude')))
+            #QLoggingCategory.qCWarning(QLoggingCategory.NPINDI, 'computing altaz ra='+str(RA.value)+' de='+str(DEC.value)+' lst='+str(lstdms.hmss())+' lat='+str(Options.Instance().value('location/latitude'))+' lon='+str(Options.Instance().value('location/longitude')))
             self.currentCoord.EquatorialToHorizontal(lstdms, dms(Options.Instance().value('location/latitude')))
             self.EqCoordPreviousState = nvp.s
-            if prevCoord.ra() != self.currentCoord.ra() or prevCoord.dec() != self.currentCoord.dec():
-                self.newCoord.emit(self.currentCoord)
+            #if prevCoord.ra() != self.currentCoord.ra() or prevCoord.dec() != self.currentCoord.dec():
+            self.newCoord.emit(self.currentCoord)
         # elif nvp.name == 'HORIZONTAL_COORD':
         #     Az = INDI.IUFindNumber(nvp, 'AZ')
         #     Alt = INDI.IUFindNumber(nvp, 'ALT')

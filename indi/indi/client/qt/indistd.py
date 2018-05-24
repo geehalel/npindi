@@ -153,14 +153,41 @@ class ISD:
                     self.connected = True
                     self.Connected.emit()
                     self.createDeviceInit()
-            if prop.getName() == 'TIME_UTC' and Options.Instance().value('npindi/useTimeUpdate') and Options.Instance().value('npindi/useComputerSource'):
-                if prop.vp is None: return
-                if prop.p != INDI.IPerm.IP_RO:
-                    self.updateTime()
-            elif prop.getName() == 'GEOGRAPHIC_COORD' and Options.Instance().value('npindi/useGeographicUpdate') and Options.Instance().value('npindi/useComputerSource'):
-                if prop.vp is None: return
-                if prop.p != INDI.IPerm.IP_RO:
-                    self.updateLocation()
+            if prop.getName() == 'TIME_UTC':
+                if Options.Instance().value('npindi/useTimeUpdate'):
+                    if Options.Instance().value('npindi/useComputerSource'):
+                        if prop.vp is None: return
+                        if prop.p != INDI.IPerm.IP_RO:
+                            self.updateTime()
+                    elif Options.Instance().value('npindi/useDeviceSource'):
+                        tp = INDI.IUFindText(prop, 'UTC')
+                        if tp is None: return
+                        indiDateTime = QDateTime.fromString(tp.text, Qt.ISODate)
+                        if indiDateTime.isNull() or not indiDateTime.isValid():
+                            return
+                        tp = INDI.IUFindText(prop, 'OFFSET')
+                        if tp is None: return
+                        try:
+                            utcOffset = float(tp.text)
+                        except:
+                            QLoggingCategory.qCWarning(QLoggingCategory.NPINDI, 'Unable to convert UTC Offset: '+tp.text)
+                        QLoggingCategory.qCInfo(QLoggingCategory.NPINDI, 'Setting UTC time from device '+self.getDeviceName() + ': '+indiDateTime.toString())
+                        setINDIUtc(indiDateTime)
+            elif prop.getName() == 'GEOGRAPHIC_COORD':
+                if Options.Instance().value('npindi/useGeographicUpdate'):
+                    if Options.Instance().value('npindi/useComputerSource'):
+                        if prop.vp is None: return
+                        if prop.p != INDI.IPerm.IP_RO:
+                            self.updateLocation()
+                    elif Options.Instance().value('npindi/useDeviceSource'):
+                        latEle = INDI.IUFindNumber(prop, 'LAT')
+                        lonEle = INDI.IUFindNumber(prop, 'LONG')
+                        eleEle = INDI.IUFindNumber(prop, 'ELEV')
+                        if latEle is not None and lonEle is not None and eleEle is not None:
+                            QLoggingCategory.qCInfo(QLoggingCategory.NPINDI,'Setting geographic coords from device (lat,lon,ele)=('+str(latEle.value)+', '+str(lonEle.value)+','+str(eleEle.value)+')')
+                            Options.Instance().setValue('location/latitude', latEle.value)
+                            Options.Instance().setValue('location/longitude', lonEle.value)
+                            Options.Instance().setValue('location/elevation', eleEle.value)
             # TODO WATCHDOG_HEARTBEAT
         def removeProperty(self, prop):
             self.properties.remove(prop)
@@ -200,13 +227,16 @@ class ISD:
                 tp = INDI.IUFindText(prop, 'UTC')
                 if tp is None: return
                 indiDateTime = QDateTime.fromString(tp.text, Qt.ISODate)
+                if indiDateTime.isNull() or not indiDateTime.isValid():
+                    QLoggingCategory.qCWarning(QLoggingCategory.NPINDI, 'Unable to convert UTC DateTime: '+tp.text)
+                    return
                 tp = INDI.IUFindText(prop, 'OFFSET')
                 if tp is None: return
                 try:
                     utcOffset = float(tp.text)
                 except:
                     QLoggingCategory.qCWarning(QLoggingCategory.NPINDI, 'Unable to convert UTC Offset: '+tp.text)
-                QLoggingCategory.qCInfo(QLoggingCategory.NPINDI, 'Setting UTC time from device: '+self.getDeviceName() + indiDateTime.toString())
+                QLoggingCategory.qCInfo(QLoggingCategory.NPINDI, 'Setting UTC time from device '+self.getDeviceName() +': '+ indiDateTime.toString())
                 setINDIUtc(indiDateTime)
             self.textUpdated.emit(prop)
         def processLight(self, prop):

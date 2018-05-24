@@ -253,7 +253,8 @@ class mountMotionController(QFrame):
             speed.clicked.disconnect()
         for trackspeed in [self.trackSidereal, self.trackSolar,\
             self.trackLunar, self.trackCustom]:
-            trackspeed.clicked.disconnect()
+            if trackspeed.isEnabled():
+                trackspeed.clicked.disconnect()
         self.RAUp.clicked.disconnect()
         self.RADown.clicked.disconnect()
         self.DECUp.clicked.disconnect()

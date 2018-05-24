@@ -67,6 +67,8 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(self.HC)
         #self.centrallayout.addStretch(1)
         #self.centrallayout.addSpacerItem(self.centralSpacer)
+        self.gdi = None
+        self.connectiontimer.timeout.connect(self.addTelescope)
         INDIListener.Instance().newTelescope.connect(self.addTimedTelescope)
         self.pollingtimer.timeout.connect(self.HC.update)
         self.setWindowTitle('Mount Hand Controller Demo')
@@ -83,16 +85,15 @@ class MainWindow(QMainWindow):
                 'a Telescope Controller in your Qt application.')
     @QtCore.pyqtSlot(ISD.GDInterface)
     def addTimedTelescope(self, gdi):
-        self.connectiontimer.timeout.connect(lambda : self.addTelescope(gdi))
+        self.gdi = gdi
         self.connectiontimer.start()
-    @QtCore.pyqtSlot(ISD.GDInterface)
-    def addTelescope(self, gdi):
+    @QtCore.pyqtSlot()
+    def addTelescope(self):
         if self.scope is not None:
             return
         INDIListener.Instance().newTelescope.disconnect(self.addTimedTelescope)
         INDIListener.Instance().deviceRemoved.connect(self.removeTelescope)
-        self.connectiontimer.timeout.disconnect()
-        self.scope = gdi
+        self.scope = self.gdi
         self.HC.setTelescope(self.scope)
         self.pollingtimer.start()
     @QtCore.pyqtSlot(ISD.GDInterface)

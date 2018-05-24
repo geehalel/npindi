@@ -135,6 +135,8 @@ _INDIUtcRefresh = 250
 _INDIUtcSynced = False
 def setINDIUtc(dt):
     global _INDIUtcDatetime, _INDIUtcTimer, _INDIUtcSynced
+    QLoggingCategory.qCWarning(QLoggingCategory.NPINDI, 'INDI UTC Timer not implemented.  Local clock will be used.')
+    return
     _INDIUtcDatetime = dt
     _INDIUtcTimer = QTimer()
     _INDIUtcTimer.setSingleShot(False)
