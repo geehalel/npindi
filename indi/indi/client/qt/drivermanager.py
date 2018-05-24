@@ -107,8 +107,7 @@ class DriverManager(QDialog):
 
         # indi client options
         self.options = QDialog(parent=self)
-        uiOptions = ui_Options(self.options)
-        self.options.adjustSize()
+        self.options.rejected.connect(lambda : self.clearLayout(self.options.layout()))
         # action groups
         self.actionGroups = dict()
         self.ag_indi = QActionGroup(self)
@@ -150,10 +149,23 @@ class DriverManager(QDialog):
             self.raise_()
             self.activateWindow()
             self.showNormal()
+    def clearLayout(self, layout):
+        if layout is not None:
+            while layout.count():
+                item = layout.takeAt(0)
+                widget = item.widget()
+                if widget is not None:
+                    widget.deleteLater()
+                else:
+                    self.clearLayout(item.layout())
     def toggleOptions(self):
-        if self.options.isVisible() : #and self.isActiveWindow():
+        if self.options.isVisible(): #and self.isActiveWindow():
+            self.uiOptions.destroy()
+            self.clearLayout(self.options.layout())
             self.options.hide()
         else:
+            self.uiOptions = ui_Options(self.options)
+            self.options.adjustSize()
             self.options.raise_()
             self.options.activateWindow()
             self.options.showNormal()

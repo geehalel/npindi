@@ -242,7 +242,10 @@ class ui_Options(QFrame):
         self.settings.setValue(key, False if state==0 else True)
     def initUI(self, parent=None):
         locale = QLocale()
-        layout = QVBoxLayout(parent if parent is not None else self)
+        if parent is not None and parent.layout() is not None:
+            layout = parent.layout()
+        else:
+            layout = QVBoxLayout(parent if parent is not None else self)
         for k in self.settings.childKeys():
             hboxlayout = QHBoxLayout()
             label = QLabel(k)
