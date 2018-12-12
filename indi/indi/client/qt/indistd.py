@@ -171,7 +171,7 @@ class ISD:
                             utcOffset = float(tp.text)
                         except:
                             QLoggingCategory.qCWarning(QLoggingCategory.NPINDI, 'Unable to convert UTC Offset: '+tp.text)
-                        QLoggingCategory.qCInfo(QLoggingCategory.NPINDI, 'Setting UTC time from device '+self.getDeviceName() + ': '+indiDateTime.toString())
+                        QLoggingCategory.qCInfo(QLoggingCategory.NPINDI, 'Setting UTC time from device '+self.getDeviceName() + ': '+indiDateTime.toString(Qt.ISODate))
                         setINDIUtc(indiDateTime)
             elif prop.getName() == 'GEOGRAPHIC_COORD':
                 if Options.Instance().value('npindi/useGeographicUpdate'):

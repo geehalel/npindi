@@ -212,6 +212,10 @@ class mountMotionController(QFrame):
                     break
                 speedindex += 1
             #print('connect', speed.text(), speedindex)
+            if speedindex == len(self.slewSwitch.vp):
+                print('Can not find predefined slew speed', slew)
+                speed.setEnabled(False)
+                continue
             speed.clicked.connect(lambda state, index=speedindex: self.setSlewSpeed(index))
             self.slewIndex[speedindex] = speed
             if slew == 'SLEW_FIND':
