@@ -107,6 +107,7 @@ class DriverManager(QDialog):
 
         # indi client options
         self.options = QDialog(parent=self)
+        self.options.setWindowTitle('PyQt INDI Options')
         self.options.rejected.connect(lambda : self.clearLayout(self.options.layout()))
         # action groups
         self.actionGroups = dict()
