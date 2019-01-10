@@ -254,7 +254,8 @@ class mountMotionController(QFrame):
             self.trackActivate.clicked.disconnect()
         for speed in [ self.speedGuide, self.speedCenter,\
             self.speedFind, self.speedSlew]:
-            speed.clicked.disconnect()
+            if speed.isEnabled():
+                speed.clicked.disconnect()
         for trackspeed in [self.trackSidereal, self.trackSolar,\
             self.trackLunar, self.trackCustom]:
             if trackspeed.isEnabled():
