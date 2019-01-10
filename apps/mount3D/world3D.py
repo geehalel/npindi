@@ -111,6 +111,38 @@ class PointGeometry(QGeometry):
         #radiusAttribute.setDivisor(1)
         self.addAttribute(radiusAttribute)
         self.radiusAttribute = radiusAttribute
+class CircleGeometry(QGeometry):
+    def __init__(self, parent=None, radius=1.0, segment=1.0):
+        super().__init__(parent)
+        self.radius = radius
+        self.segment = segment
+        posAttribute = QAttribute(self)
+        self.vertexBuffer = QBuffer(self)
+        posAttribute.setName(QAttribute.defaultPositionAttributeName())
+        posAttribute.setVertexBaseType(QAttribute.Float)
+        posAttribute.setVertexSize(3)
+        posAttribute.setAttributeType(QAttribute.VertexAttribute)
+        posAttribute.setBuffer(self.vertexBuffer)
+        posAttribute.setByteOffset(0)
+        #posAttribute.setByteStride(0)
+        posAttribute.setByteStride((3) * FLOAT_SIZE) # sizeof(float)
+        #posAttribute.setDivisor(1)
+        self.addAttribute(posAttribute)
+        self.positionAttribute = posAttribute
+        self.npoints = math.floor((2.0 * math.pi * self.radius) / self.segment)
+        dtheta = (2.0 * math.pi) / (self.npoints)
+        theta = 0.0
+        points = QByteArray()
+        for i in range(self.npoints):
+            ex = self.radius * math.cos(theta)
+            ey = self.radius * math.sin(theta)
+            ez = 0.0
+            points.append(struct.pack('f', ex))
+            points.append(struct.pack('f', ez))
+            points.append(struct.pack('f', ey))
+            theta += dtheta
+        self.vertexBuffer.setData(points)
+        self.positionAttribute.setCount(self.npoints)
 class World3D():
     """
     Qt3D frame: x axis pointing North, y axis pointing Zenith/pole, z axis pointing East
@@ -136,6 +168,8 @@ class World3D():
         print(self.jd)
         #self.makeStars(self.jd)
         self.makeStarsPoints(self.jd)
+        c = self.makeCircle(QVector3D(0.0, 1000.0, 0.0), 1000.0, QVector3D(0.0, 0.0, 1.0), World3D._m_celestial_qt)
+        c.setParent(self.rootEntity)
         self.qtime=QQuaternion()
         self.qlongitude = QQuaternion()
         self.setLatitude(90.0)
@@ -354,6 +388,24 @@ class World3D():
         #pointGeometryRenderer.setVertexCount(len(stars))
         self.skyJ2000.addComponent(pointGeometryRenderer)
         self.skyJ2000.setParent(self.skyEntity)
+    def makeCircle(self, center, radius, normal, matrix):
+        e = QEntity()
+        t = QTransform()
+        #t.setTranslation(center)
+        #t.setRotation(QQuaternion.fromRotationMatrix(matrix) * QQuaternion.rotationTo(QVector3D(0.0, 0.0, 1.0), normal))
+        t.setRotation(QQuaternion.fromRotationMatrix(matrix))
+        e.addComponent(t)
+        m = QDiffuseSpecularMaterial()
+        m.setAmbient(QColor(0,200,200))
+        e.addComponent(m)
+        circleGeometryRenderer = QGeometryRenderer()
+        circleGeometry = CircleGeometry(circleGeometryRenderer, radius)
+        circleGeometryRenderer.setPrimitiveType(QGeometryRenderer.LineLoop)
+        circleGeometryRenderer.setGeometry(circleGeometry)
+        #pointGeometryRenderer.setFirstInstance(0)
+        circleGeometryRenderer.setInstanceCount(1)
+        e.addComponent(circleGeometryRenderer)
+        return e
     def makeEcliptic(self):
         for j in range(-12, 14):
             # ecliptic pole
