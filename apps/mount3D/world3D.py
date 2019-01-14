@@ -20,12 +20,13 @@ from PyQt5.QtCore import QSize, QUrl, QByteArray, QTimer
 
 from PyQt5.Qt3DCore import QEntity, QTransform
 from PyQt5.Qt3DExtras import QPlaneMesh, QSphereMesh, QCylinderMesh, QDiffuseSpecularMaterial, QTextureMaterial, QText2DEntity, QExtrudedTextMesh
-from PyQt5.Qt3DRender import QGeometry, QGeometryRenderer,QAttribute, QBuffer, QTexture2D, QTextureLoader, QMaterial, QEffect, QTechnique, QRenderPass, QShaderProgram, QPointSize, QGraphicsApiFilter, QFilterKey
+from PyQt5.Qt3DRender import QGeometry, QGeometryRenderer,QAttribute, QBuffer, QTexture2D, QTextureLoader, QMaterial, QEffect, QTechnique, QRenderPass, QRenderSettings, QShaderProgram, QPointSize, QGraphicsApiFilter, QFilterKey
 from PyQt5.QtSvg import QSvgRenderer
 
 import math
 import struct
 from catalogs import load_bright_star_5
+from axis3D import Line, Axis
 from indi.client.qt.indicommon import getJD, getGAST
 FLOAT_SIZE = 4
 
@@ -145,15 +146,19 @@ class CircleGeometry(QGeometry):
         self.positionAttribute.setCount(self.npoints)
 class World3D():
     """
-    Qt3D frame: x axis pointing North, y axis pointing Zenith/pole, z axis pointing East
-    Celestial frame: x axis pointing South, y axis pointing East, Z axis pointing Zenith/pole
+    Qt3D/Observer frame: x axis pointing meridian through the pole, y axis pointing Zenith/pole, z axis pointing East in North hem, West in South hem
+    Celestial frame: x axis pointing meridian opposite pole, y axis pointing East in North hem, West in South hem, z axis pointing celestial pole
     """
     # raw first order
     _m_celestial_qt = QMatrix3x3([-1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 1.0, 0.0])
     # _m_celestial is its proper inverse
+
     _sky_radius = 50000.0
     def __init__(self, parent=None, jd=None):
-        self.rootEntity = QEntity(parent)
+        self.rootEntity = QEntity(parent) #Qt3D/observer frame
+        self.hemEntity = QEntity(self.rootEntity)
+        self.hemTransform = QTransform()
+        self.hemEntity.addComponent(self.hemTransform)
         self.skyEntity = QEntity(self.rootEntity)
         self.skyTransform = QTransform()
         self.skyEntity.addComponent(self.skyTransform)
@@ -168,8 +173,15 @@ class World3D():
         print(self.jd)
         #self.makeStars(self.jd)
         self.makeStarsPoints(self.jd)
-        c = self.makeCircle(QVector3D(0.0, 1000.0, 0.0), 1000.0, QVector3D(0.0, 0.0, 1.0), World3D._m_celestial_qt)
-        c.setParent(self.rootEntity)
+        #c = self.makeCircle(QVector3D(0.0, 1000.0, 0.0), 1000.0, QVector3D(0.0, 0.0, 1.0), World3D._m_celestial_qt)
+        #c.setParent(self.rootEntity)
+        #l = Line(parent=self.rootEntity, start=QVector3D(0.0, 0.0, 0.0), end=QVector3D(2000.0, 0.0, 0.0))
+        aqt=Axis(parent=self.rootEntity, origin=QVector3D(0.0, 0.0, 0.0), segment = 500.0)
+        aqt.transform.setTranslation(QVector3D(0.0, 10.0, 0.0))
+        #asky=Axis(parent=self.skyEntity, origin=QVector3D(0.0, 1000.0, 0.0), segment = 1000.0)
+        self.atel=Axis(parent=self.rootEntity, origin=QVector3D(0.0, 0.0, 0.0), segment = 1000.0)
+        self.atel.transform.setTranslation(QVector3D(0.0, 1000.0, 0.0))
+
         self.qtime=QQuaternion()
         self.qlongitude = QQuaternion()
         self.setLatitude(90.0)
@@ -183,24 +195,38 @@ class World3D():
         self.celestialtimer.setSingleShot(False)
         self.celestialtimer.timeout.connect(self.updateCeletialTime)
         self.celestialtimer.start()
+
     def updateCeletialTime(self):
         gast = self.gast + (self.celestialintervalms / 1000) / (60*60)
         self.setGAST(gast)
     def getCelestialTime(self):
         return self.gast + (self.longitude / 15.0)
     def updateSkyTransform(self):
-        self.skyTransform.setRotation(self.qlatitude * self.qlongitude * self.qtime)
+        hemt = QQuaternion()
+        #if self.latitude < 0.0:
+        #    hemt = QQuaternion.fromAxisAndAngle(QVector3D(0.0, 0.0, 1.0), 180.0)
+        self.skyTransform.setRotation(hemt*self.qlatitude * self.qlongitude * self.qtime)
+        if self.latitude < 0.0:
+            self.skyTransform.setScale3D(QVector3D(-1.0, -1.0,1.0))
+        else:
+            self.skyTransform.setScale3D(QVector3D(1.0, 1.0, 1.0))
     def setLatitude(self, latitude):
         self.latitude = latitude
-        if self.latitude < 0.0:
-            angle = 90.0 - abs(self.latitude)
-        else:
-            angle = -(90.0 - self.latitude)
+        #if self.latitude < 0.0:
+        #    angle = 90.0 - abs(self.latitude)
+        #else:
+        #    angle = -(90.0 - self.latitude)
+        angle = -(90.0 - abs(self.latitude))
         self.qlatitude = QQuaternion.fromAxisAndAngle(QVector3D(0.0, 0.0, 1.0), angle)
         self.updateSkyTransform()
+        self.atel.transform.setRotation(self.qlatitude*QQuaternion.fromRotationMatrix(World3D._m_celestial_qt))
+        if self.latitude >= 0.0:
+            self.hemTransform.matrix().setToIdentity()
+        else:
+            self.hemTransform.setRotationY(180.0)
     def setLongitude(self, longitude):
         self.longitude = longitude
-        angle = -self.longitude
+        angle = -self.longitude if self.latitude > 0.0 else self.longitude
         self.qlongitude = QQuaternion.fromAxisAndAngle(QVector3D(0.0, 1.0, 0.0), angle)
         self.updateSkyTransform()
     def setGAST(self, gast):
@@ -218,7 +244,7 @@ class World3D():
         #self.horizontalMesh.setMirrored(True)
         #self.horizontalTransform = QTransform()
         #self.horizontalTransform.setMatrix(QTransform.rotateAround(QVector3D(0,0,0), 90.0, QVector3D(1.0, 0.0, 0.0)))
-        #self.horizontalTransform.setTranslation(QVector3D(0.0, -10.0, 0.0))
+        #self.horizontalTransform.setTranslation(QVector3D(0.0, -2.0, 0.0))
         self.horizontalMat = QDiffuseSpecularMaterial()
         self.horizontalMat.setAmbient(QColor(0, 128, 0))
         #self.horizontalPlane.addComponent(self.horizontalTransform)
@@ -274,7 +300,7 @@ class World3D():
         self.basementMesh.setHeight(1500.0)
         self.basementMesh.setMeshResolution(QSize(2, 2))
         self.basementTransform = QTransform()
-        self.basementTransform.setTranslation(QVector3D(0,20.0,0))
+        self.basementTransform.setTranslation(QVector3D(0,5.0,0))
         self.basementTransform.setRotationY(-90.0)
         self.basementMatBack = QDiffuseSpecularMaterial()
         self.basementMatBack.setAmbient(QColor(200,200,228))
@@ -284,7 +310,7 @@ class World3D():
         self.basementGrid.addComponent(self.basementMatBack)
         self.basementGrid.addComponent(self.basementMat)
         self.basementGrid.addComponent(self.basementMesh)
-        self.basementGrid.setParent(self.rootEntity)
+        self.basementGrid.setParent(self.hemEntity)
     def makeCardinals(self):
         cardinals = [('North', QVector3D(World3D._sky_radius - 100.0, 20.0, 0.0), (0.0, -90.0, 0.0)),
         ('South', QVector3D(-(World3D._sky_radius - 100.0), 20.0, 0.0), (0.0, 90.0, 0.0)),
@@ -312,7 +338,7 @@ class World3D():
             e.addComponent(eTransform)
             e.addComponent(eText)
             e.setParent(self.cardinals)
-        self.cardinals.setParent(self.rootEntity)
+        self.cardinals.setParent(self.hemEntity)
     def makeStars(self, jd):
         # star coordinates in J2000.0 equinox,no proper motion
         # transform for precession-nutation as defined by IAU2006
@@ -356,7 +382,7 @@ class World3D():
         self.transformJ2000.setRotation(qqt*qPrecessNut)
         #self.transformJ2000.setRotation(qqt)
         self.skyJ2000.addComponent(self.transformJ2000)
-        radius_mag = [150.0, 100.0, 70.0, 50, 40, 30.0]
+        radius_mag = [180.0, 140.0, 100.0, 70.0, 50, 40, 30.0]
         stars = load_bright_star_5('bsc5.dat.gz', True)
         starmat = starMaterial()
         #starmat = QDiffuseSpecularMaterial()
@@ -368,7 +394,7 @@ class World3D():
         #points = QByteArray(3 * FLOAT_SIZE * len(stars), 'b\x00')
         points = QByteArray()
         for star in stars:
-            eradius = radius_mag[int(star['mag'] - 1)] if int(star['mag'] - 1) < 6 else 20.0
+            eradius = radius_mag[int(star['mag'] + 1)] if int(star['mag'] + 1) < 7 else 20.0
             ex = (World3D._sky_radius - 150.0) * math.cos(star['ra']) * math.cos(star['de'])
             ey = (World3D._sky_radius -150.0) * math.sin(star['de'])
             ez = (World3D._sky_radius -150.0) * math.sin(star['ra']) * math.cos(star['de'])
@@ -486,8 +512,12 @@ if __name__ == '__main__':
     app=QApplication(sys.argv)
     view = Qt3DWindow()
     view.defaultFrameGraph().setClearColor(QColor(37,37,39))
+    #print(view.renderSettings().renderPolicy()) always
+    view.renderSettings().setRenderPolicy(QRenderSettings.OnDemand)
     view.show()
     world = World3D()
+    world.setLatitude(-49.2940)
+    world.setLongitude(2.3835)
     camera = view.camera()
     camera.lens().setPerspectiveProjection(45.0, 16.0 / 9.0, 0.1, 100000.0)
     #camera.lens().setOrthographicProjection(-50000,50000, 0, 50000, 0, 100000.0)
