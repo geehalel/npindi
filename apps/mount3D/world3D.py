@@ -154,10 +154,13 @@ class World3D():
     """
     # raw first order
     #_m_celestial_qt_north = QMatrix3x3([-1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 1.0, 0.0])
-    # North: 90 around x * 180 around z
-    #_m_celestial_qt_north = QMatrix3x3([1.0, 0.0, 0.0, 0.0, 0.0, -1.0, 0.0, 1.0, 0.0]) * QMatrix3x3([-1.0, 0.0, 0.0, 0.0, -1.0, 0.0, 0.0, 0.0, 1.0])
-    _m_celestial_qt_north = QMatrix3x3([1.0, 0.0, 0.0, 0.0, 0.0, -1.0, 0.0, -1.0, 0.0])
-    _m_celestial_qt_south = QMatrix3x3([-1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 1.0, 0.0])
+    # North: +90 around x * 180 around y (x,y,z is qt frame)
+    #_m_celestial_qt_north = QMatrix3x3([1.0, 0.0, 0.0, 0.0, 0.0, -1.0, 0.0, 1.0, 0.0]) * QMatrix3x3([-1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, -1.0])
+    _m_celestial_qt_north = QMatrix3x3([-1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 1.0, 0.0])
+    #_m_celestial_qt_north = QMatrix3x3([1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0])
+    # South: -90 around x (x, y, z is qt frame) * 180 around y (x,y,z is qt frame)
+    #_m_celestial_qt_south =  QMatrix3x3([1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, -1.0, 0.0]) * QMatrix3x3([-1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, -1.0])
+    _m_celestial_qt_south = QMatrix3x3([-1.0, 0.0, 0.0, 0.0, 0.0, -1.0, 0.0, -1.0, 0.0])
     # _m_celestial is its proper inverse
 
     _sky_radius = 50000.0
@@ -169,7 +172,7 @@ class World3D():
         self.skyEntity = QEntity(self.rootEntity)
         self.skyTransform = QTransform()
         self.skyEntity.addComponent(self.skyTransform)
-        self.makeHorizontalPlane()
+        #self.makeHorizontalPlane()
         self.makeEquatorialGrid()
         self.makeHorizontalGrid()
         self.makeMountBasement()
@@ -192,7 +195,7 @@ class World3D():
         self.m_celestial_qt = QQuaternion()
         self.qtime=QQuaternion()
         self.qlongitude = QQuaternion()
-        self.setLatitude(90.0)
+        self.setLatitude(-90.0)
         self.setLongitude(0.0)
         self.setGAST(getGAST())
         #self.makeEcliptic()
@@ -217,7 +220,7 @@ class World3D():
         #    angle = 90.0 - abs(self.latitude)
         #else:
         #    angle = -(90.0 - self.latitude)
-        angle = -(90.0 - abs(self.latitude))
+        angle = (90.0 - abs(self.latitude))
         self.qlatitude = QQuaternion.fromAxisAndAngle(QVector3D(0.0, 1.0, 0.0), angle)
 
         if self.latitude >= 0.0:
@@ -226,17 +229,19 @@ class World3D():
         else:
             self.hemTransform.setRotationY(180.0)
             self.m_celestial_qt = QQuaternion.fromRotationMatrix(World3D._m_celestial_qt_south)
-        self.atel.transform.setRotation(self.m_celestial_qt*self.qlatitude)
+        self.equatorialTransform.setRotation(self.m_celestial_qt) # put equatorialGrid in celestial frame (celestial_qt is its own inverse)
+        self.atel.transform.setRotation(self.qlatitude)
         self.updateSkyTransform()
     def setLongitude(self, longitude):
         self.longitude = longitude
-        angle = - self.longitude
+        angle =  - self.longitude
         self.qlongitude = QQuaternion.fromAxisAndAngle(QVector3D(0.0, 0.0, 1.0), angle)
         self.updateSkyTransform()
     def setGAST(self, gast):
-        #print('Setting GAST', gast)
+        print('Setting GAST', gast)
         self.gast = gast
-        angle = -self.gast * 360.0 / 24.0
+        angle = - self.gast * 360.0 / 24.0 - 180.0 # 180: celestial to qt frame ?
+        #angle = 0.0
         self.qtime = QQuaternion.fromAxisAndAngle(QVector3D(0.0, 0.0, 1.0), angle)
         self.updateSkyTransform()
     def makeHorizontalPlane(self):
@@ -479,7 +484,7 @@ class World3D():
         #b = 1 / (1 + z)
         b = 0.5 + (x*x + y*y) / 8.0
         #raw major order
-        m = QMatrix3x3([1.0 - b*x*x, -b*x*y, -x, -b*x*y, 1.0 -b*y*y, -y, x, y, 1.0 - b*(x*x+y*y)])
+        m = QMatrix3x3([1.0 - b*x*x, -b*x*y, x, -b*x*y, 1.0 -b*y*y, y, -x, -y, 1.0 - b*(x*x+y*y)])
         return m
     def matCIOLocator(self, jd):
         J2000 = 2451545.0
@@ -521,8 +526,10 @@ if __name__ == '__main__':
     view.renderSettings().setRenderPolicy(QRenderSettings.OnDemand)
     view.show()
     world = World3D()
-    world.setLatitude(49.2940)
-    world.setLongitude(2.3835)
+    #world.setLatitude(49.2940)
+    #world.setLongitude(2.3835)
+    world.setLatitude(51.9)
+    world.setLongitude(65.90)
     camera = view.camera()
     camera.lens().setPerspectiveProjection(45.0, 16.0 / 9.0, 0.1, 100000.0)
     #camera.lens().setOrthographicProjection(-50000,50000, 0, 50000, 0, 100000.0)
