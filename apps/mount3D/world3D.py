@@ -30,6 +30,9 @@ from axis3D import Line, Axis
 from indi.client.qt.indicommon import getJD, getGAST
 FLOAT_SIZE = 4
 
+# CELESTIAL FRAME: origin earth center, x pointing SOUTH meridian, y pointing EAST, z point NORTH POLE
+# makestars, precessnut work in this frame
+
 class DPolynom:
     def __init__(self):
         self.coeffs = None
@@ -150,7 +153,11 @@ class World3D():
     Celestial frame: x axis pointing meridian opposite pole, y axis pointing East in North hem, West in South hem, z axis pointing celestial pole
     """
     # raw first order
-    _m_celestial_qt = QMatrix3x3([-1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 1.0, 0.0])
+    #_m_celestial_qt_north = QMatrix3x3([-1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 1.0, 0.0])
+    # North: 90 around x * 180 around z
+    #_m_celestial_qt_north = QMatrix3x3([1.0, 0.0, 0.0, 0.0, 0.0, -1.0, 0.0, 1.0, 0.0]) * QMatrix3x3([-1.0, 0.0, 0.0, 0.0, -1.0, 0.0, 0.0, 0.0, 1.0])
+    _m_celestial_qt_north = QMatrix3x3([1.0, 0.0, 0.0, 0.0, 0.0, -1.0, 0.0, -1.0, 0.0])
+    _m_celestial_qt_south = QMatrix3x3([-1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 1.0, 0.0])
     # _m_celestial is its proper inverse
 
     _sky_radius = 50000.0
@@ -182,6 +189,7 @@ class World3D():
         self.atel=Axis(parent=self.rootEntity, origin=QVector3D(0.0, 0.0, 0.0), segment = 1000.0)
         self.atel.transform.setTranslation(QVector3D(0.0, 1000.0, 0.0))
 
+        self.m_celestial_qt = QQuaternion()
         self.qtime=QQuaternion()
         self.qlongitude = QQuaternion()
         self.setLatitude(90.0)
@@ -202,14 +210,7 @@ class World3D():
     def getCelestialTime(self):
         return self.gast + (self.longitude / 15.0)
     def updateSkyTransform(self):
-        hemt = QQuaternion()
-        #if self.latitude < 0.0:
-        #    hemt = QQuaternion.fromAxisAndAngle(QVector3D(0.0, 0.0, 1.0), 180.0)
-        self.skyTransform.setRotation(hemt*self.qlatitude * self.qlongitude * self.qtime)
-        if self.latitude < 0.0:
-            self.skyTransform.setScale3D(QVector3D(-1.0, -1.0,1.0))
-        else:
-            self.skyTransform.setScale3D(QVector3D(1.0, 1.0, 1.0))
+        self.skyTransform.setRotation(self.m_celestial_qt * self.qlatitude * self.qlongitude * self.qtime)
     def setLatitude(self, latitude):
         self.latitude = latitude
         #if self.latitude < 0.0:
@@ -217,23 +218,26 @@ class World3D():
         #else:
         #    angle = -(90.0 - self.latitude)
         angle = -(90.0 - abs(self.latitude))
-        self.qlatitude = QQuaternion.fromAxisAndAngle(QVector3D(0.0, 0.0, 1.0), angle)
-        self.updateSkyTransform()
-        self.atel.transform.setRotation(self.qlatitude*QQuaternion.fromRotationMatrix(World3D._m_celestial_qt))
+        self.qlatitude = QQuaternion.fromAxisAndAngle(QVector3D(0.0, 1.0, 0.0), angle)
+
         if self.latitude >= 0.0:
             self.hemTransform.matrix().setToIdentity()
+            self.m_celestial_qt = QQuaternion.fromRotationMatrix(World3D._m_celestial_qt_north)
         else:
             self.hemTransform.setRotationY(180.0)
+            self.m_celestial_qt = QQuaternion.fromRotationMatrix(World3D._m_celestial_qt_south)
+        self.atel.transform.setRotation(self.m_celestial_qt*self.qlatitude)
+        self.updateSkyTransform()
     def setLongitude(self, longitude):
         self.longitude = longitude
-        angle = -self.longitude if self.latitude > 0.0 else self.longitude
-        self.qlongitude = QQuaternion.fromAxisAndAngle(QVector3D(0.0, 1.0, 0.0), angle)
+        angle = - self.longitude
+        self.qlongitude = QQuaternion.fromAxisAndAngle(QVector3D(0.0, 0.0, 1.0), angle)
         self.updateSkyTransform()
     def setGAST(self, gast):
         #print('Setting GAST', gast)
         self.gast = gast
         angle = -self.gast * 360.0 / 24.0
-        self.qtime = QQuaternion.fromAxisAndAngle(QVector3D(0.0, 1.0, 0.0), angle)
+        self.qtime = QQuaternion.fromAxisAndAngle(QVector3D(0.0, 0.0, 1.0), angle)
         self.updateSkyTransform()
     def makeHorizontalPlane(self):
         self.horizontalPlane = QEntity()
@@ -348,8 +352,8 @@ class World3D():
         self.transformJ2000 = QTransform()
         m = self.matPrecessNut(jd)
         qPrecessNut = QQuaternion.fromRotationMatrix(m)
-        qqt=QQuaternion.fromRotationMatrix(World3D._m_celestial_qt)
-        self.transformJ2000.setRotation(qqt*qPrecessNut)
+        #qqt=QQuaternion.fromRotationMatrix(World3D._m_celestial_qt)
+        self.transformJ2000.setRotation(qPrecessNut)
         self.skyJ2000.addComponent(self.transformJ2000)
         radius_mag = [150.0, 100.0, 70.0, 50, 40, 30.0]
         stars = load_bright_star_5('bsc5.dat.gz', True)
@@ -378,8 +382,8 @@ class World3D():
         self.transformJ2000 = QTransform()
         m = self.matPrecessNut(jd)
         qPrecessNut = QQuaternion.fromRotationMatrix(m)
-        qqt=QQuaternion.fromRotationMatrix(World3D._m_celestial_qt)
-        self.transformJ2000.setRotation(qqt*qPrecessNut)
+        #qqt=QQuaternion.fromRotationMatrix(World3D._m_celestial_qt)
+        self.transformJ2000.setRotation(qPrecessNut)
         #self.transformJ2000.setRotation(qqt)
         self.skyJ2000.addComponent(self.transformJ2000)
         radius_mag = [180.0, 140.0, 100.0, 70.0, 50, 40, 30.0]
@@ -441,8 +445,8 @@ class World3D():
             mcio = self.matCIOLocator(2451545.0 + 365.25 * j * 1000)
             qEcliptic = QQuaternion.fromRotationMatrix(m)
             qCIO = QQuaternion.fromRotationMatrix(mcio)
-            qp=QQuaternion.fromRotationMatrix(World3D._m_celestial_qt)
-            transformEcliptic.setRotation(qp*qEcliptic*qCIO)
+            #qp=QQuaternion.fromRotationMatrix(World3D._m_celestial_qt)
+            transformEcliptic.setRotation(qEcliptic*qCIO)
             skyEcliptic.addComponent(transformEcliptic)
             eclmat = QDiffuseSpecularMaterial()
             eclmat.setAmbient(QColor(255,20,20))
@@ -474,7 +478,8 @@ class World3D():
         #z = math.sqrt(1 - x*x - y*y)
         #b = 1 / (1 + z)
         b = 0.5 + (x*x + y*y) / 8.0
-        m = QMatrix3x3([1.0 - b*x*x, -b*x*y, x, -b*x*y, 1.0 -b*y*y, y, -x, -y, 1.0 - b*(x*x+y*y)])
+        #raw major order
+        m = QMatrix3x3([1.0 - b*x*x, -b*x*y, -x, -b*x*y, 1.0 -b*y*y, -y, x, y, 1.0 - b*(x*x+y*y)])
         return m
     def matCIOLocator(self, jd):
         J2000 = 2451545.0
@@ -516,7 +521,7 @@ if __name__ == '__main__':
     view.renderSettings().setRenderPolicy(QRenderSettings.OnDemand)
     view.show()
     world = World3D()
-    world.setLatitude(-49.2940)
+    world.setLatitude(49.2940)
     world.setLongitude(2.3835)
     camera = view.camera()
     camera.lens().setPerspectiveProjection(45.0, 16.0 / 9.0, 0.1, 100000.0)
