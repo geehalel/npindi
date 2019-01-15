@@ -168,11 +168,12 @@ class World3D():
         self.rootEntity = QEntity(parent) #Qt3D/observer frame
         self.hemEntity = QEntity(self.rootEntity)
         self.hemTransform = QTransform()
+        self.hemTransform.matrix().setToIdentity()
         self.hemEntity.addComponent(self.hemTransform)
         self.skyEntity = QEntity(self.rootEntity)
         self.skyTransform = QTransform()
         self.skyEntity.addComponent(self.skyTransform)
-        #self.makeHorizontalPlane()
+        self.makeHorizontalPlane()
         self.makeEquatorialGrid()
         self.makeHorizontalGrid()
         self.makeMountBasement()
@@ -189,13 +190,14 @@ class World3D():
         aqt=Axis(parent=self.rootEntity, origin=QVector3D(0.0, 0.0, 0.0), segment = 500.0)
         aqt.transform.setTranslation(QVector3D(0.0, 10.0, 0.0))
         #asky=Axis(parent=self.skyEntity, origin=QVector3D(0.0, 1000.0, 0.0), segment = 1000.0)
-        self.atel=Axis(parent=self.rootEntity, origin=QVector3D(0.0, 0.0, 0.0), segment = 1000.0)
-        self.atel.transform.setTranslation(QVector3D(0.0, 1000.0, 0.0))
+
+        self.atel=Axis(parent=self.skyEntity, origin=QVector3D(0.0, 0.0, 0.0), segment = 1000.0)
+        #self.atel.transform.setTranslation(QVector3D(0.0, 1000.0, 0.0))
 
         self.m_celestial_qt = QQuaternion()
         self.qtime=QQuaternion()
         self.qlongitude = QQuaternion()
-        self.setLatitude(-90.0)
+        self.setLatitude(90.0)
         self.setLongitude(0.0)
         self.setGAST(getGAST())
         #self.makeEcliptic()
@@ -216,21 +218,25 @@ class World3D():
         self.skyTransform.setRotation(self.m_celestial_qt * self.qlatitude * self.qlongitude * self.qtime)
     def setLatitude(self, latitude):
         self.latitude = latitude
-        #if self.latitude < 0.0:
-        #    angle = 90.0 - abs(self.latitude)
-        #else:
-        #    angle = -(90.0 - self.latitude)
-        angle = (90.0 - abs(self.latitude))
+        if self.latitude < 0.0:
+            angle = 90.0 - abs(self.latitude)
+        else:
+            angle = -(90.0 - self.latitude)
+        #print('setLatitude', latitude)
+
         self.qlatitude = QQuaternion.fromAxisAndAngle(QVector3D(0.0, 1.0, 0.0), angle)
 
         if self.latitude >= 0.0:
-            self.hemTransform.matrix().setToIdentity()
+            print('setLatitude:', 'North', latitude)
+            #self.hemTransform.matrix().setToIdentity() # does not work?
+            self.hemTransform.setRotationY(0.0)
             self.m_celestial_qt = QQuaternion.fromRotationMatrix(World3D._m_celestial_qt_north)
         else:
+            print('setLatitude', 'South', latitude)
             self.hemTransform.setRotationY(180.0)
             self.m_celestial_qt = QQuaternion.fromRotationMatrix(World3D._m_celestial_qt_south)
         self.equatorialTransform.setRotation(self.m_celestial_qt) # put equatorialGrid in celestial frame (celestial_qt is its own inverse)
-        self.atel.transform.setRotation(self.qlatitude)
+        #self.atel.transform.setRotation(self.qlatitude)
         self.updateSkyTransform()
     def setLongitude(self, longitude):
         self.longitude = longitude
@@ -238,9 +244,9 @@ class World3D():
         self.qlongitude = QQuaternion.fromAxisAndAngle(QVector3D(0.0, 0.0, 1.0), angle)
         self.updateSkyTransform()
     def setGAST(self, gast):
-        print('Setting GAST', gast)
+        #print('Setting GAST', gast)
         self.gast = gast
-        angle = - self.gast * 360.0 / 24.0 - 180.0 # 180: celestial to qt frame ?
+        angle = - self.gast * 360.0 / 24.0
         #angle = 0.0
         self.qtime = QQuaternion.fromAxisAndAngle(QVector3D(0.0, 0.0, 1.0), angle)
         self.updateSkyTransform()
@@ -251,12 +257,12 @@ class World3D():
         self.horizontalMesh.setHeight(2 * World3D._sky_radius)
         self.horizontalMesh.setMeshResolution(QSize(50, 50))
         #self.horizontalMesh.setMirrored(True)
-        #self.horizontalTransform = QTransform()
+        self.horizontalPlaneTransform = QTransform()
         #self.horizontalTransform.setMatrix(QTransform.rotateAround(QVector3D(0,0,0), 90.0, QVector3D(1.0, 0.0, 0.0)))
-        #self.horizontalTransform.setTranslation(QVector3D(0.0, -2.0, 0.0))
+        self.horizontalPlaneTransform.setTranslation(QVector3D(0.0, -5.0, 0.0))
         self.horizontalMat = QDiffuseSpecularMaterial()
         self.horizontalMat.setAmbient(QColor(0, 128, 0))
-        #self.horizontalPlane.addComponent(self.horizontalTransform)
+        self.horizontalPlane.addComponent(self.horizontalPlaneTransform)
         self.horizontalPlane.addComponent(self.horizontalMat)
         self.horizontalPlane.addComponent(self.horizontalMesh)
         self.horizontalPlane.setParent(self.rootEntity)
@@ -309,7 +315,7 @@ class World3D():
         self.basementMesh.setHeight(1500.0)
         self.basementMesh.setMeshResolution(QSize(2, 2))
         self.basementTransform = QTransform()
-        self.basementTransform.setTranslation(QVector3D(0,5.0,0))
+        self.basementTransform.setTranslation(QVector3D(0,0.0,0))
         self.basementTransform.setRotationY(-90.0)
         self.basementMatBack = QDiffuseSpecularMaterial()
         self.basementMatBack.setAmbient(QColor(200,200,228))
@@ -528,10 +534,11 @@ if __name__ == '__main__':
     world = World3D()
     #world.setLatitude(49.2940)
     #world.setLongitude(2.3835)
-    world.setLatitude(51.9)
-    world.setLongitude(65.90)
+    #world.setLatitude(51.9)
+    #world.setLongitude(65.90)
+    world.atel.setEnabled(False)
     camera = view.camera()
-    camera.lens().setPerspectiveProjection(45.0, 16.0 / 9.0, 0.1, 100000.0)
+    camera.lens().setPerspectiveProjection(60.0, 16.0 / 9.0, 0.1, 100000.0)
     #camera.lens().setOrthographicProjection(-50000,50000, 0, 50000, 0, 100000.0)
     camera.setPosition(QVector3D(0.0, 750.0, 3000.0))
     camera.setViewCenter(QVector3D(0.0, 0.0, 0.0))
