@@ -520,10 +520,34 @@ class World3D():
         s = - 0.5 * (xt * yt - xt0 * yt0) + (ixt - ixt0) - 0.0145606
         m = QMatrix3x3([math.cos(s), -math.sin(s), 0.0, math.sin(s), math.cos(s), 0, 0, 0, 1.0])
         return m
+
+def text2DEntityfitSize(text2DEntity, displayWidth):
+    from PyQt5.QtGui import QFontMetricsF
+    from PyQt5.QtCore import QRectF, Qt
+    fontMetrics = QFontMetricsF(text2DEntity.font())
+    boundingRect = fontMetrics.boundingRect(
+        QRectF(),
+        Qt.AlignLeft | Qt.AlignTop,
+        text2DEntity.text())
+    text2DEntity.setWidth(boundingRect.width())
+    text2DEntity.setHeight(boundingRect.height())
+
+    # adjust to displayWidth
+    def findTransformComponent(entity):
+        for component in entity.components():
+            if type(component) == QTransform:
+                return component
+        return None
+    transform = findTransformComponent(text2DEntity)
+    if transform == None:
+        transform = QTransform()
+        text2DEntity.addComponent(transform)
+    transform.setScale(displayWidth / boundingRect.width())
+
 if __name__ == '__main__':
     from PyQt5.QtWidgets import QApplication
     from PyQt5.QtGui import QVector3D
-    from PyQt5.Qt3DExtras import Qt3DWindow, QOrbitCameraController
+    from PyQt5.Qt3DExtras import Qt3DWindow, QOrbitCameraController, QText2DEntity
     import sys
     app=QApplication(sys.argv)
     view = Qt3DWindow()
@@ -546,5 +570,13 @@ if __name__ == '__main__':
     camController.setLinearSpeed(500.0)
     camController.setLookSpeed(120.0)
     camController.setCamera(camera)
+    tlst=QText2DEntity(world.rootEntity)
+    tlstTransform = QTransform()
+    tlstTransform.setRotationX(-90.0)
+    tlstTransform.setRotationY(-90.0)
+    tlstTransform.setTranslation(QVector3D(-1000.0, 0.0, -250.0))
+    tlst.addComponent(tlstTransform)
+    tlst.setText('LST 00:00:00')
+    text2DEntityfitSize(tlst, 500)
     view.setRootEntity(world.rootEntity)
     app.exec_()
